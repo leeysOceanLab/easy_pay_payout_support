@@ -41,7 +41,7 @@ class MainController with ChangeNotifier {
     page = 1;
     withdrawalList = [];
     update();
-    await getMyLockedWithdrawal();
+    // await getMyLockedWithdrawal();
     await getWithdrawalList();
     refreshController.refreshCompleted();
     isLoading = false;

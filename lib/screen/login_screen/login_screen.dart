@@ -147,21 +147,21 @@ class _LoginScreenState extends State<LoginScreen> {
                           obscureText: loginController.obscurePassword,
                           hintText: AppStrings.enterPassword.tr(),
                         ),
-                        12.heightSpace,
-                        Align(
-                          alignment: Alignment.centerRight,
-                          child: TextButton(
-                            onPressed: () {},
-                            style: TextButton.styleFrom(
-                              foregroundColor: const Color(0xFF2563EB),
-                            ),
-                            child: AppText(
-                              AppStrings.forgotPassword.tr(),
-                              fontWeight: FontWeight.w600,
-                              color: const Color(0xFF2563EB),
-                            ),
-                          ),
-                        ),
+                        // 12.heightSpace,
+                        // Align(
+                        //   alignment: Alignment.centerRight,
+                        //   child: TextButton(
+                        //     onPressed: () {},
+                        //     style: TextButton.styleFrom(
+                        //       foregroundColor: const Color(0xFF2563EB),
+                        //     ),
+                        //     child: AppText(
+                        //       AppStrings.forgotPassword.tr(),
+                        //       fontWeight: FontWeight.w600,
+                        //       color: const Color(0xFF2563EB),
+                        //     ),
+                        //   ),
+                        // ),
                         14.heightSpace,
                         SizedBox(
                           width: double.infinity,
@@ -183,14 +183,14 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                         ),
                         18.heightSpace,
-                        Center(
-                          child: AppText(
-                            AppStrings.protectedWith2fa.tr(),
-                            textAlign: TextAlign.center,
-                            fontSize: 12,
-                            color: const Color(0xFF9CA3AF),
-                          ),
-                        ),
+                        // Center(
+                        //   child: AppText(
+                        //     AppStrings.protectedWith2fa.tr(),
+                        //     textAlign: TextAlign.center,
+                        //     fontSize: 12,
+                        //     color: const Color(0xFF9CA3AF),
+                        //   ),
+                        // ),
                       ],
                     ),
                   ),

@@ -129,22 +129,26 @@
   "copy_again_title": "再次複製",
   "copy_again_message": "此資料曾經複製過，是否要再次複製？",
   "copy_again_confirm": "再次複製",
-  "withdrawal_confirmed_successfully": "提款單已成功完成",
+  "withdrawal_confirmed_successfully": "代付單已成功完成",
   "next_order": "下一筆訂單",
   "next_one": "下一筆",
   "end": "結束",
   "created_at": "建立時間",
   "holder_name": "持有人姓名",
 
-
   "confirm": "確認",
   "confirm_incomplete_title": "確認未完成",
-  "confirm_incomplete_message": "你確定要將此提款單標記為未完成？",
+  "confirm_incomplete_message": "你確定要將此代付單標記為未完成？",
   "confirm_complete_title": "確認完成",
-  "confirm_complete_message": "你確定要完成此提款單？",
-   "logout_confirmation": "你確定要登出嗎？",
+  "confirm_complete_message": "你確定要完成此代付單？",
+  "logout_confirmation": "你確定要登出嗎？",
 
-   "no_history_yet": "暫時未有歷史記錄",
-   "completed_at": "完成時間"
-  
+  "no_history_yet": "暫時未有歷史記錄",
+  "completed_at": "完成時間",
+  "invalid_date_range": "日期時間範圍不正確",
+  "date_range": "日期範圍",
+  "from_date": "開始日期",
+  "to_date": "結束日期",
+  "total_amount": "總金額",
+  "reset": "重設"
 }

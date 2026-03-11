@@ -65,7 +65,7 @@ class RouteGenerator {
           settings: settings,
           builder: (context) {
             int id = arguments["id"];
-            WithdrawalDetailsModel details = arguments?["details"];
+            WithdrawalDetailsModel details = arguments?["initialDetails"];
             return HistoryWithdrawalDetailsScreen(
               id: id,
               initialDetails: details,

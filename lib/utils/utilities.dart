@@ -3,6 +3,8 @@ import "dart:developer";
 
 import "dart:math" as math;
 
+import "package:calendar_date_picker2/calendar_date_picker2.dart";
+
 import '../imports.dart';
 
 // Package imports:
@@ -357,3 +359,181 @@ double getTextLineHeight(TextStyle style) {
 
   return textPainter.height;
 }
+
+Future<List<DateTime?>?> showCalendarDatePicker({
+  CalendarDatePicker2Type? calendarType = CalendarDatePicker2Type.range,
+  DateTime? lastDate,
+  DateTime? currentDate,
+  DateTime? firstDate,
+  List<DateTime?>? value,
+  Widget? bottomWidget,
+}) async {
+  final initialValue = value ?? [];
+
+  return await showCalendarDatePicker2Dialog(
+    context: NavigationService.context,
+    config: CalendarDatePicker2WithActionButtonsConfig(
+      lastDate: lastDate,
+      currentDate: currentDate,
+      firstDate: firstDate,
+      lastMonthIcon: const Icon(
+        Icons.keyboard_arrow_left,
+        color: AppColors.blackColor,
+      ),
+      nextMonthIcon: const Icon(
+        Icons.keyboard_arrow_right_rounded,
+        color: AppColors.blackColor,
+      ),
+      calendarType: calendarType,
+      okButtonTextStyle: TextStyle(
+        fontSize: kFont14.sp,
+        color: AppColors.blackColor,
+        fontWeight: FontWeight.bold,
+      ),
+      cancelButtonTextStyle: TextStyle(
+        fontSize: kFont14.sp,
+        color: AppColors.blackColor,
+        fontWeight: FontWeight.bold,
+      ),
+      selectedDayTextStyle: const TextStyle(color: AppColors.whiteColor),
+      selectedDayHighlightColor: Colors.blueAccent,
+      dayTextStyle: const TextStyle(color: AppColors.blackColor),
+      yearTextStyle: const TextStyle(color: AppColors.blackColor),
+      todayTextStyle: const TextStyle(color: AppColors.blackColor),
+      controlsTextStyle: const TextStyle(color: AppColors.blackColor),
+      weekdayLabelTextStyle: const TextStyle(color: AppColors.blackColor),
+      disabledDayTextStyle: const TextStyle(color: Colors.grey),
+      selectedYearTextStyle: const TextStyle(color: AppColors.whiteColor),
+      selectedRangeDayTextStyle: const TextStyle(color: AppColors.blackColor),
+    ),
+    dialogSize: bottomWidget != null
+        ? const Size(325, 430)
+        : const Size(325, 390),
+    borderRadius: BorderRadius.circular(15),
+    dialogBackgroundColor: AppColors.whiteColor,
+    value: initialValue,
+    builder: (context, child) {
+      final Widget content = child ?? const SizedBox.shrink();
+
+      return Localizations.override(
+        context: context,
+        locale: const Locale('zh', 'HK'),
+        child: Material(
+          color: Colors.transparent,
+          child: Center(
+            child: Container(
+              width: 325,
+              padding: const EdgeInsets.fromLTRB(0, 0, 0, 12).r,
+              decoration: BoxDecoration(
+                color: AppColors.whiteColor,
+                borderRadius: BorderRadius.circular(15).r,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  content,
+                  if (bottomWidget != null) ...[
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 0).r,
+                      child: bottomWidget,
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+    },
+  );
+}
+
+// Future<List<DateTime?>?> showCalendarDatePicker({
+//   CalendarDatePicker2Type? calendarType = CalendarDatePicker2Type.range,
+//   DateTime? lastDate,
+//   DateTime? currentDate,
+//   DateTime? firstDate,
+//   List<DateTime?>? value,
+//   Widget? bottomWidget,
+// }) async {
+//   final initialValue = value ?? [];
+
+//   return await showCalendarDatePicker2Dialog(
+//     context: NavigationService.context,
+//     config: CalendarDatePicker2WithActionButtonsConfig(
+//       lastDate: lastDate,
+//       currentDate: currentDate,
+//       firstDate: firstDate,
+//       calendarType: calendarType,
+//       lastMonthIcon: const Icon(
+//         Icons.keyboard_arrow_left,
+//         color: AppColors.blackColor,
+//       ),
+//       nextMonthIcon: const Icon(
+//         Icons.keyboard_arrow_right_rounded,
+//         color: AppColors.blackColor,
+//       ),
+//       okButtonTextStyle: TextStyle(
+//         fontSize: kFont14.sp,
+//         color: AppColors.blackColor,
+//         fontWeight: FontWeight.bold,
+//       ),
+//       cancelButtonTextStyle: TextStyle(
+//         fontSize: kFont14.sp,
+//         color: AppColors.blackColor,
+//         fontWeight: FontWeight.bold,
+//       ),
+//       selectedDayTextStyle: const TextStyle(color: AppColors.whiteColor),
+//       selectedDayHighlightColor: Colors.blueAccent,
+//       dayTextStyle: const TextStyle(color: AppColors.blackColor),
+//       yearTextStyle: const TextStyle(color: AppColors.blackColor),
+//       todayTextStyle: const TextStyle(color: AppColors.blackColor),
+//       controlsTextStyle: const TextStyle(color: AppColors.blackColor),
+//       weekdayLabelTextStyle: const TextStyle(color: AppColors.blackColor),
+//       disabledDayTextStyle: const TextStyle(color: Colors.grey),
+//       selectedYearTextStyle: const TextStyle(color: AppColors.whiteColor),
+//       selectedRangeDayTextStyle: const TextStyle(color: AppColors.blackColor),
+//     ),
+//     dialogSize: bottomWidget != null
+//         ? const Size(325, 470)
+//         : const Size(325, 400),
+//     borderRadius: BorderRadius.circular(15),
+//     dialogBackgroundColor: AppColors.whiteColor,
+//     value: initialValue,
+//     builder: (context, child) {
+//       Widget content = child ?? const SizedBox.shrink();
+
+//       if (bottomWidget != null) {
+//         content = Material(
+//           color: Colors.transparent,
+//           child: Center(
+//             child: Container(
+//               width: 325,
+//               decoration: BoxDecoration(
+//                 color: AppColors.whiteColor,
+//                 borderRadius: BorderRadius.circular(15).r,
+//               ),
+//               padding: const EdgeInsets.fromLTRB(0, 0, 0, 16).r,
+//               child: Column(
+//                 mainAxisSize: MainAxisSize.min,
+//                 children: [
+//                   Flexible(child: child ?? const SizedBox.shrink()),
+//                   Padding(
+//                     padding: const EdgeInsets.symmetric(horizontal: 16).r,
+//                     child: bottomWidget,
+//                   ),
+//                 ],
+//               ),
+//             ),
+//           ),
+//         );
+//       }
+
+//       return Localizations.override(
+//         context: context,
+//         locale: const Locale('zh', 'HK'),
+//         child: content,
+//       );
+//     },
+//   );
+// }

@@ -1,7 +1,7 @@
 name: easy_pay_bank_infomrm
 description: "A new Flutter project."
 publish_to: 'none'
-version: 0.1.0+1
+version: 0.1.1+2
 
 environment:
   sdk: ^3.9.2
@@ -42,6 +42,9 @@ dependencies:
   geolocator: ^14.0.2
   names_launcher: ^0.0.2
   flutter_launcher_icons: ^0.14.4
+  ntp: ^2.0.0
+  calendar_date_picker2: ^2.0.1
+  omni_datetime_picker: ^2.3.1
 
 dev_dependencies:
   flutter_test:
@@ -51,7 +54,9 @@ dev_dependencies:
 flutter_launcher_icons:
   android: true
   ios: true
-  image_path: "assets/icon/logo.png" # 這是你圖片的路徑
+  # image_path: "assets/icon/logo.png" # 這是你圖片的路徑
+  image_path: "assets/easy_pay/logo.png" # 這是你圖片的路徑
+  # image_path: "assets/three_sixty/logo.png" # 這是你圖片的路徑
   min_sdk_android: 21 # 可選，設定 Android 最低版本支援
   remove_alpha_ios: true # 強烈建議加上：自動移除 iOS 圖標的透明度，避免審核被拒
 

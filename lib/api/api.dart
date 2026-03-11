@@ -83,14 +83,26 @@ class Api {
   /// Withdrawl list
   Future<void> getWithdrawalsApprovedList({
     required int page,
+    String? dateFrom,
+    String? dateTo,
     required Function(ApiResponseModel) onSuccess,
     bool showLoader = false,
     Function(String)? onError,
   }) async {
+    String endPoint = "$kWithdrawalApprovedList?page=$page";
+
+    if (dateFrom != null && dateFrom.isNotEmpty) {
+      endPoint += "&date_from=${Uri.encodeComponent(dateFrom)}";
+    }
+
+    if (dateTo != null && dateTo.isNotEmpty) {
+      endPoint += "&date_to=${Uri.encodeComponent(dateTo)}";
+    }
+
     await HttpClientCustom.httpGet(
       showLoader: showLoader,
       apiUrl: apiUrl,
-      endPoint: "$kWithdrawalApprovedList?page=$page",
+      endPoint: endPoint,
       withBearer: true,
 
       onSuccess: onSuccess,

@@ -35,6 +35,29 @@ class AppNavigator extends NavigatorObserver {
     }
   }
 
+  static Future<T?> pushNamedAndRemoveUntil<T>(
+    BuildContext context,
+    String routeName, {
+    dynamic arguments,
+    Map<String, String>? parameters,
+  }) {
+    if (!RouteName.containsRoute(routeName)) {
+      printLog("pushNamedAndRemoveUntil route error: $routeName");
+      return Future.value();
+    }
+
+    if (parameters != null) {
+      final uri = Uri(path: routeName, queryParameters: parameters);
+      routeName = uri.toString();
+    }
+
+    return Navigator.of(context).pushNamedAndRemoveUntil(
+      routeName,
+      (route) => false,
+      arguments: arguments,
+    );
+  }
+
   static void popUntilWithResult<T>(
     BuildContext context,
     String routeName, [

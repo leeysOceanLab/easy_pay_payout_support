@@ -123,10 +123,10 @@ class LoginController extends ChangeNotifier {
     Loader.show();
 
     try {
-      Loader.hide();
       printLog(
         "Calling login API with username: ${usernameTextController.text.trim()}",
       );
+
       await ApiService.api.login(
         password: passwordTextController.text,
         g2faToken: twoFaTextController.text.trim(),
@@ -137,7 +137,13 @@ class LoginController extends ChangeNotifier {
 
           Loader.hide();
 
-          AppNavigator.pushReplacementNamed(context, RouteName.mainPage);
+          if (onSuccess != null) {
+            onSuccess();
+          }
+
+          await Future.delayed(const Duration(milliseconds: 100));
+
+          AppNavigator.pushNamedAndRemoveUntil(context, RouteName.mainPage);
         },
         onError: (error) {
           print("Login response Login error: $error");
@@ -150,34 +156,4 @@ class LoginController extends ChangeNotifier {
       rethrow;
     }
   }
-
-  // Future<void> onTapLogIn() async {
-  //   printLog("onTapLogIn");
-  //   unfocusKeyboard();
-  //   isSubmit = true;
-  //   update();
-
-  //   if (formKey.currentState!.validate()) {
-  //     formKey.currentState?.save();
-  //   }
-
-  //   Loader.show();
-
-  //   // call login api
-  //   await ApiService.api.login(
-  //     password: passwordTextController.text,
-  //     g2faToken: twoFaTextController.text,
-  //     username: usernameTextController.text.trim(),
-  //     onSuccess: (response) {
-  //       printLog("Login response: ${response.data}");
-  //       ApiService.updateApiToken(response.data["token"]);
-  //       AppNavigator.pushReplacementNamed(context, RouteName.mainPage);
-  //       Loader.hide();
-  //     },
-  //     onError: (error) {
-  //       printLog("Login error: $error");
-  //       Loader.hide();
-  //     },
-  //   );
-  // }
 }

@@ -1,23 +1,35 @@
-// Flutter imports:
 import "package:easy_pay_bank_infomrm/configs/app_config.dart";
 import "package:flutter/cupertino.dart";
-
-// Package imports:
 import "package:bot_toast/bot_toast.dart";
-
-// Project imports:
 import "package:easy_pay_bank_infomrm/routes/route_generator.dart";
-// import "package:easy_pay_bank_infomrm/utils/secure_storage.dart";
-// import "package:easy_pay_bank_infomrm/utils/shared_prefs.dart";
 
 import "controller/app_controller.dart";
 import "imports.dart";
 
 Future<void> bootstrap(AppConfig config) async {
   WidgetsFlutterBinding.ensureInitialized();
+
   AppConfig.instance = config;
 
-  runApp(const MyApp());
+  await EasyLocalization.ensureInitialized();
+  await SecureStorage().init();
+  await SharedPrefs.instance.init();
+  await ApiService.init();
+
+  runApp(
+    EasyLocalization(
+      useOnlyLangCode: false,
+      supportedLocales: const [Locale('zh', 'HK')],
+      saveLocale: true,
+      path: "assets/translations",
+      fallbackLocale: const Locale('zh', 'HK'),
+      startLocale: const Locale('zh', 'HK'),
+      child: MultiProvider(
+        providers: [ChangeNotifierProvider(create: (_) => AppController())],
+        child: const MyApp(),
+      ),
+    ),
+  );
 }
 
 Future<void> main() async {
@@ -30,28 +42,6 @@ Future<void> main() async {
   );
 
   await bootstrap(config);
-
-  WidgetsFlutterBinding.ensureInitialized();
-
-  await EasyLocalization.ensureInitialized();
-  await SecureStorage().init();
-  await SharedPrefs.instance.init();
-  await ApiService.init();
-
-  runApp(
-    EasyLocalization(
-      useOnlyLangCode: false,
-      supportedLocales: const [Locale("zu")],
-      saveLocale: true,
-      path: "assets/translations",
-      fallbackLocale: const Locale("zu"),
-      startLocale: const Locale("zu"),
-      child: MultiProvider(
-        providers: [ChangeNotifierProvider(create: (_) => AppController())],
-        child: const MyApp(),
-      ),
-    ),
-  );
 }
 
 class MyApp extends StatefulWidget {
@@ -84,7 +74,7 @@ class _MyAppState extends State<MyApp> {
       designSize: kIsWeb
           ? Size(screenSize.width, screenSize.height)
           : const Size(375, 812),
-      builder: (context, child) {
+      builder: (_, child) {
         return MaterialApp(
           navigatorKey: NavigationService.navigatorKey,
           localizationsDelegates: context.localizationDelegates,

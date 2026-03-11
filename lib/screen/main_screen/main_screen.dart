@@ -336,14 +336,14 @@ class _MainScreenState extends State<MainScreen> {
                 children: [
                   AppText(
                     "${item.merchantName ?? "-"} • $typeText",
-                    fontSize: 16,
+                    fontSize: kFont14,
                     fontWeight: FontWeight.w600,
                     color: titleColor,
                   ),
                   10.heightSpace,
                   AppText(
                     item.txId ?? "-",
-                    fontSize: 18,
+                    fontSize: kFont16,
                     fontWeight: FontWeight.w800,
                     color: txIdColor,
                   ),
@@ -351,14 +351,83 @@ class _MainScreenState extends State<MainScreen> {
               ),
             ),
             12.widthSpace,
-            _buildStatusBadge(
-              isLocked: isLocked,
-              lockedByMe: lockedByMe,
-              lockedByOther: lockedByOther,
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                _buildStatusBadge(
+                  isLocked: isLocked,
+                  lockedByMe: lockedByMe,
+                  lockedByOther: lockedByOther,
+                ),
+                _buildAmountDisplay(item.withdrawAmount),
+              ],
             ),
           ],
         ),
       ),
+    );
+  }
+
+  String _sanitizeAmount(String? amount) {
+    if (amount == null) return "";
+
+    return amount
+        .replaceAll("RM", "")
+        .replaceAll("rm", "")
+        .replaceAll("HKD", "")
+        .replaceAll("hkd", "")
+        .replaceAll(",", "")
+        .trim();
+  }
+
+  String _formatAmountDisplay(String? amount) {
+    final raw = _sanitizeAmount(amount);
+
+    if (raw.isEmpty) return "-";
+
+    final value = double.tryParse(raw);
+    if (value == null) return raw;
+
+    final parts = value.toStringAsFixed(2).split(".");
+    final whole = parts[0];
+    final decimal = parts[1];
+
+    final buffer = StringBuffer();
+    for (int i = 0; i < whole.length; i++) {
+      final reverseIndex = whole.length - i;
+      buffer.write(whole[i]);
+      if (reverseIndex > 1 && reverseIndex % 3 == 1) {
+        buffer.write(",");
+      }
+    }
+
+    return "${buffer.toString()}.$decimal";
+  }
+
+  Widget _buildAmountDisplay(String? amount) {
+    final String displayAmount = _formatAmountDisplay(amount);
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        Padding(
+          padding: EdgeInsets.only(bottom: 4.h, right: 4.w),
+          child: AppText(
+            context.tr(AppStrings.hkd),
+            fontSize: kFont12,
+            fontWeight: FontWeight.normal,
+            color: AppColors.secondaryTextColor,
+          ),
+        ),
+        AppText(
+          displayAmount,
+          fontSize: kFont18,
+          fontWeight: FontWeight.bold,
+          color: AppColors.primaryNoContextColor,
+        ),
+      ],
     );
   }
 
@@ -383,14 +452,14 @@ class _MainScreenState extends State<MainScreen> {
     }
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8).r,
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4).r,
       decoration: BoxDecoration(
         color: bgColor,
         borderRadius: BorderRadius.circular(12).r,
       ),
       child: AppText(
         text,
-        fontSize: 13,
+        fontSize: kFont13,
         fontWeight: FontWeight.w700,
         color: textColor,
       ),

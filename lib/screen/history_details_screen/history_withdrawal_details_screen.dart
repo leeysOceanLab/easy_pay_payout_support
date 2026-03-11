@@ -199,10 +199,10 @@ class _HistoryWithdrawalDetailsScreenState
           final String completedAt = _displayValue(details.completedAt);
           final String txId = _displayValue(details.txId);
           final String amountDisplay = _formatAmountDisplay(
-            details.finalAmount ?? details.withdrawAmount,
+            details.withdrawAmount ?? details.withdrawAmount,
           );
           final String amountCopy = _sanitizeAmountForCopy(
-            details.finalAmount ?? details.withdrawAmount,
+            details.withdrawAmount ?? details.withdrawAmount,
           );
 
           final String mobileNo = _displayValue(details.mobileNo);

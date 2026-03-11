@@ -167,4 +167,11 @@ class AppStrings {
   static const String logoutConfirmation = "logout_confirmation";
   static const String noHistoryYet = "no_history_yet";
   static const String completedAt = "completed_at";
+  static const String invalidDateRange = "invalid_date_range";
+
+  static const String dateRange = "date_range";
+  static const String fromDate = "from_date";
+  static const String toDate = "to_date";
+  static const String totalAmount = "total_amount";
+  static const String reset = "reset";
 }

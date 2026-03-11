@@ -125,8 +125,31 @@ class WithdrawalDetailsController with ChangeNotifier {
     return isSuccess;
   }
 
-  void _startCountdown() {
+  final Stopwatch _countdownStopwatch = Stopwatch();
+
+  DateTime _parseHongKongTimeToUtc(String value) {
+    final String raw = value.trim();
+
+    // If backend already sends timezone info like:
+    // 2026-03-10T20:30:00Z
+    // 2026-03-10T20:30:00+08:00
+    final bool hasTimezone =
+        raw.endsWith('Z') || RegExp(r'([+-]\d{2}:\d{2})$').hasMatch(raw);
+
+    if (hasTimezone) {
+      return DateTime.parse(raw).toUtc();
+    }
+
+    // If backend sends no timezone, assume Hong Kong time (UTC+8)
+    // Example: 2026-03-10 20:30:00
+    final String normalized = raw.replaceFirst(' ', 'T');
+    return DateTime.parse('$normalized+08:00').toUtc();
+  }
+
+  Future<void> _startCountdown() async {
     countdownTimer?.cancel();
+    _countdownStopwatch.stop();
+    _countdownStopwatch.reset();
 
     final String? lockExpiresAt = withdrawalDetails.lockExpiresAt;
 
@@ -139,11 +162,14 @@ class WithdrawalDetailsController with ChangeNotifier {
     }
 
     try {
-      final DateTime expiryTime = DateTime.parse(lockExpiresAt).toLocal();
-      final DateTime now = DateTime.now();
-      final Duration diff = expiryTime.difference(now);
+      final DateTime expiryTimeUtc = _parseHongKongTimeToUtc(lockExpiresAt);
 
-      if (diff.inSeconds <= 0) {
+      // Get trusted real-world time from NTP
+      final DateTime trustedNowUtc = await NTP.now().then((d) => d.toUtc());
+
+      final Duration initialDiff = expiryTimeUtc.difference(trustedNowUtc);
+
+      if (initialDiff.inSeconds <= 0) {
         remainingDuration = Duration.zero;
         isExpired = true;
         update();
@@ -151,18 +177,21 @@ class WithdrawalDetailsController with ChangeNotifier {
         return;
       }
 
-      remainingDuration = diff;
+      remainingDuration = initialDiff;
       isExpired = false;
       hasCheckedExpiredStatus = false;
       isTakenByOther = false;
       update();
 
+      _countdownStopwatch.start();
+
       countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-        final DateTime current = DateTime.now();
-        final Duration newDiff = expiryTime.difference(current);
+        final Duration elapsed = _countdownStopwatch.elapsed;
+        final Duration newDiff = initialDiff - elapsed;
 
         if (newDiff.inSeconds <= 0) {
           timer.cancel();
+          _countdownStopwatch.stop();
           remainingDuration = Duration.zero;
           isExpired = true;
           update();
@@ -180,6 +209,61 @@ class WithdrawalDetailsController with ChangeNotifier {
       _handleExpired();
     }
   }
+  // void _startCountdown() {
+  //   countdownTimer?.cancel();
+
+  //   final String? lockExpiresAt = withdrawalDetails.lockExpiresAt;
+
+  //   if (lockExpiresAt == null || lockExpiresAt.isEmpty) {
+  //     remainingDuration = Duration.zero;
+  //     isExpired = true;
+  //     update();
+  //     _handleExpired();
+  //     return;
+  //   }
+
+  //   try {
+  //     final DateTime expiryTime = DateTime.parse(lockExpiresAt).toLocal();
+  //     final DateTime now = DateTime.now();
+  //     final Duration diff = expiryTime.difference(now);
+
+  //     if (diff.inSeconds <= 0) {
+  //       remainingDuration = Duration.zero;
+  //       isExpired = true;
+  //       update();
+  //       _handleExpired();
+  //       return;
+  //     }
+
+  //     remainingDuration = diff;
+  //     isExpired = false;
+  //     hasCheckedExpiredStatus = false;
+  //     isTakenByOther = false;
+  //     update();
+
+  //     countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+  //       final DateTime current = DateTime.now();
+  //       final Duration newDiff = expiryTime.difference(current);
+
+  //       if (newDiff.inSeconds <= 0) {
+  //         timer.cancel();
+  //         remainingDuration = Duration.zero;
+  //         isExpired = true;
+  //         update();
+  //         _handleExpired();
+  //       } else {
+  //         remainingDuration = newDiff;
+  //         update();
+  //       }
+  //     });
+  //   } catch (e) {
+  //     printLog("_startCountdown error: $e");
+  //     remainingDuration = Duration.zero;
+  //     isExpired = true;
+  //     update();
+  //     _handleExpired();
+  //   }
+  // }
 
   Future<void> _handleExpired() async {
     if (isCheckingExpiredStatus || hasCheckedExpiredStatus) return;
