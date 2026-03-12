@@ -156,5 +156,6 @@
   "please_select": "請選擇",
   "problem_order": "問題訂單",
   "confirm_problem_order_title": "確認問題訂單",
-  "confirm_problem_order_message": "確定要將此代付單標記為問題訂單？"
+  "confirm_problem_order_message": "確定要將此代付單標記為問題訂單？",
+  "logging_out": "登出中"
 }

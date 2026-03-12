@@ -25,5 +25,21 @@ class AppController with ChangeNotifier {
   // update user
   set setUser(UserModel value) {}
 
-  Future<void> logout() async {}
+  Future<void> logout(BuildContext context) async {
+    final String loggingOutText = context.tr(AppStrings.loggingOut);
+
+    Loader.show(status: "$loggingOutText...");
+
+    await ApiService.deleteApiToken();
+
+    if (!context.mounted) {
+      Loader.hide();
+      return;
+    }
+
+    Loader.hide();
+
+    AppNavigator.popUntil(context, RouteName.mainPage);
+    AppNavigator.pushReplacementNamed(context, RouteName.loginPage);
+  }
 }

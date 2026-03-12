@@ -183,4 +183,5 @@ class AppStrings {
   static const String currentHistory = "current_history";
   static const String historyRecord = "history_record";
   static const String pleaseSelect = "please_select";
+  static const String loggingOut = "logging_out";
 }

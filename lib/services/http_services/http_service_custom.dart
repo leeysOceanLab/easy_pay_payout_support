@@ -132,7 +132,7 @@ class HttpServiceCustom {
     if (!_isLoggedOutDueToSession) {
       _isLoggedOutDueToSession = true;
       ToastHelper.showToast("Session expired");
-      NavigationService.context.read<AppController>().logout();
+      NavigationService.context.read<AppController>().logout(context);
     }
   }
 
