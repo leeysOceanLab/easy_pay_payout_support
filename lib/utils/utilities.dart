@@ -448,92 +448,17 @@ Future<List<DateTime?>?> showCalendarDatePicker({
   );
 }
 
-// Future<List<DateTime?>?> showCalendarDatePicker({
-//   CalendarDatePicker2Type? calendarType = CalendarDatePicker2Type.range,
-//   DateTime? lastDate,
-//   DateTime? currentDate,
-//   DateTime? firstDate,
-//   List<DateTime?>? value,
-//   Widget? bottomWidget,
-// }) async {
-//   final initialValue = value ?? [];
+DateTime? tryParseDate(String? value) {
+  if (value == null || value.trim().isEmpty) return null;
 
-//   return await showCalendarDatePicker2Dialog(
-//     context: NavigationService.context,
-//     config: CalendarDatePicker2WithActionButtonsConfig(
-//       lastDate: lastDate,
-//       currentDate: currentDate,
-//       firstDate: firstDate,
-//       calendarType: calendarType,
-//       lastMonthIcon: const Icon(
-//         Icons.keyboard_arrow_left,
-//         color: AppColors.blackColor,
-//       ),
-//       nextMonthIcon: const Icon(
-//         Icons.keyboard_arrow_right_rounded,
-//         color: AppColors.blackColor,
-//       ),
-//       okButtonTextStyle: TextStyle(
-//         fontSize: kFont14.sp,
-//         color: AppColors.blackColor,
-//         fontWeight: FontWeight.bold,
-//       ),
-//       cancelButtonTextStyle: TextStyle(
-//         fontSize: kFont14.sp,
-//         color: AppColors.blackColor,
-//         fontWeight: FontWeight.bold,
-//       ),
-//       selectedDayTextStyle: const TextStyle(color: AppColors.whiteColor),
-//       selectedDayHighlightColor: Colors.blueAccent,
-//       dayTextStyle: const TextStyle(color: AppColors.blackColor),
-//       yearTextStyle: const TextStyle(color: AppColors.blackColor),
-//       todayTextStyle: const TextStyle(color: AppColors.blackColor),
-//       controlsTextStyle: const TextStyle(color: AppColors.blackColor),
-//       weekdayLabelTextStyle: const TextStyle(color: AppColors.blackColor),
-//       disabledDayTextStyle: const TextStyle(color: Colors.grey),
-//       selectedYearTextStyle: const TextStyle(color: AppColors.whiteColor),
-//       selectedRangeDayTextStyle: const TextStyle(color: AppColors.blackColor),
-//     ),
-//     dialogSize: bottomWidget != null
-//         ? const Size(325, 470)
-//         : const Size(325, 400),
-//     borderRadius: BorderRadius.circular(15),
-//     dialogBackgroundColor: AppColors.whiteColor,
-//     value: initialValue,
-//     builder: (context, child) {
-//       Widget content = child ?? const SizedBox.shrink();
-
-//       if (bottomWidget != null) {
-//         content = Material(
-//           color: Colors.transparent,
-//           child: Center(
-//             child: Container(
-//               width: 325,
-//               decoration: BoxDecoration(
-//                 color: AppColors.whiteColor,
-//                 borderRadius: BorderRadius.circular(15).r,
-//               ),
-//               padding: const EdgeInsets.fromLTRB(0, 0, 0, 16).r,
-//               child: Column(
-//                 mainAxisSize: MainAxisSize.min,
-//                 children: [
-//                   Flexible(child: child ?? const SizedBox.shrink()),
-//                   Padding(
-//                     padding: const EdgeInsets.symmetric(horizontal: 16).r,
-//                     child: bottomWidget,
-//                   ),
-//                 ],
-//               ),
-//             ),
-//           ),
-//         );
-//       }
-
-//       return Localizations.override(
-//         context: context,
-//         locale: const Locale('zh', 'HK'),
-//         child: content,
-//       );
-//     },
-//   );
-// }
+  try {
+    return DateTime.parse(value).toLocal();
+  } catch (e) {
+    try {
+      final normalized = value.replaceAll(" ", "T");
+      return DateTime.parse(normalized).toLocal();
+    } catch (e) {
+      return null;
+    }
+  }
+}

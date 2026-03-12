@@ -51,11 +51,13 @@ class RouteGenerator {
           builder: (context) {
             int id = arguments["id"];
             WithdrawalDetailsModel? details = arguments?["details"];
+            bool? isLockedByMe = arguments?['lockedByMe'] ?? false;
             bool? isHistory = arguments?["isHistory"] ?? false;
             return WithdrawalDetailsScreen(
               id: id,
               initialDetails: details,
               isHistory: isHistory,
+              isLockedByMe: isLockedByMe,
             );
           },
         );

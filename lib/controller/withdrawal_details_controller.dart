@@ -37,12 +37,18 @@ class WithdrawalDetailsController with ChangeNotifier {
     }
   }
 
-  Future<void> setInit(int id, {WithdrawalDetailsModel? initialDetails}) async {
+  Future<void> setInit(
+    int id, {
+    WithdrawalDetailsModel? initialDetails,
+    bool? isLockedByMe,
+  }) async {
     withdrawalId = id;
     if (initialDetails != null) {
       withdrawalDetails = initialDetails;
       update();
       _startCountdown();
+    } else if (isLockedByMe == true) {
+      await getMyLockedWithdrawal(null);
     } else {
       await getDetails(id);
     }
@@ -69,6 +75,54 @@ class WithdrawalDetailsController with ChangeNotifier {
 
   bool get isActionDisabled {
     return isLoading || isCheckingExpiredStatus || isExpired || isTakenByOther;
+  }
+
+  Future<void> getMyLockedWithdrawal(int? newWithdrawalId) async {
+    if (newWithdrawalId != null) {
+      withdrawalId = newWithdrawalId;
+      update();
+    }
+    WithdrawalDetailsModel? lockedDetails;
+
+    isLoading = true;
+    update();
+
+    await ApiService.api.myLockedWithdrawal(
+      onSuccess: (response) {
+        if (response.data['withdrawal'] == null) {
+          if (withdrawalId != null) {
+            getDetails(withdrawalId ?? 0);
+          } else {
+            AppNavigator.pop(context);
+          }
+        }
+
+        lockedDetails = WithdrawalDetailsModel.fromJson(
+          Map<String, dynamic>.from(response.data['withdrawal']),
+        );
+      },
+      onError: (error) {},
+    );
+
+    if (lockedDetails == null) {
+      isLoading = false;
+      update();
+      return;
+    }
+
+    withdrawalDetails = lockedDetails!;
+    withdrawalId = withdrawalDetails.id;
+
+    isExpired = false;
+    isTakenByOther = false;
+    hasCheckedExpiredStatus = false;
+
+    update();
+
+    await _startCountdown();
+
+    isLoading = false;
+    update();
   }
 
   Future<bool> getDetails(
@@ -351,7 +405,7 @@ class WithdrawalDetailsController with ChangeNotifier {
           await getCopyLogListById(showLoader: false);
         }
       } else {
-        await releaseWithdrawal();
+        await releaseWithdrawal(null);
 
         final currentContext = NavigationService.navigatorKey.currentContext;
         if (currentContext != null) {
@@ -572,49 +626,37 @@ class WithdrawalDetailsController with ChangeNotifier {
     return "$year-$month-$day $hour:$minute:$second";
   }
 
-  Future<void> releaseWithdrawal() async {
+  Future<void> releaseWithdrawal(int? newWithdrawalId) async {
+    if (newWithdrawalId != null) {
+      withdrawalId = newWithdrawalId;
+    }
     if (isReleasing) return;
 
     isReleasing = true;
     update();
-
+    Loader.show();
     try {
       countdownTimer?.cancel();
 
       await ApiService.api.releaseWithdrawal(
         id: withdrawalId ?? withdrawalDetails.id ?? 0,
-        onSuccess: (response) {},
+        onSuccess: (response) {
+          Loader.hide();
+        },
         onError: (error) {
+          Loader.hide();
           ToastHelper.showToast(error);
         },
       );
     } catch (e) {
+      Loader.hide();
       printLog("releaseWithdrawal error: $e");
     } finally {
+      Loader.hide();
       isReleasing = false;
       update();
     }
   }
-
-  // Future<void> confirmWithdrawal() async {
-  //   update();
-
-  //   try {
-  //     countdownTimer?.cancel();
-
-  //     await ApiService.api.confirmWithdrawal(
-  //       id: withdrawalId ?? withdrawalDetails.id ?? 0,
-  //       onSuccess: (response) {},
-  //       onError: (error) {
-  //         ToastHelper.showToast(error);
-  //       },
-  //     );
-  //   } catch (e) {
-  //     printLog("releaseWithdrawal error: $e");
-  //   } finally {
-  //     update();
-  //   }
-  // }
 
   Future<void> releaseWithdrawalById(int id) async {
     try {
@@ -710,7 +752,7 @@ class WithdrawalDetailsController with ChangeNotifier {
     try {
       countdownTimer?.cancel();
 
-      await ApiService.api.releaseWithdrawal(
+      await ApiService.api.cancelWithdrawal(
         id: withdrawalId ?? withdrawalDetails.id ?? 0,
         onSuccess: (response) {},
         onError: (error) {

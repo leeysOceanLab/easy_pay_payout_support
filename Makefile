@@ -24,3 +24,9 @@ build-appbundle-easy-pay:
 
 build-appbundle-360:
 	flutter clean && flutter pub get && flutter build appbundle --release --flavor threeSixty -t lib/main_360.dart
+
+build_icon: 
+	dart run flutter_launcher_icons
+
+build_fix: 
+	dart fix --apply

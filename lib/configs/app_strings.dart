@@ -169,9 +169,18 @@ class AppStrings {
   static const String completedAt = "completed_at";
   static const String invalidDateRange = "invalid_date_range";
 
+  static const String confirmProblemOrderTitle = "confirm_problem_order_title";
+  static const String confirmProblemOrderMessage =
+      "confirm_problem_order_message";
+  static const String problemOrder = "problem_order";
+
   static const String dateRange = "date_range";
   static const String fromDate = "from_date";
   static const String toDate = "to_date";
   static const String totalAmount = "total_amount";
   static const String reset = "reset";
+
+  static const String currentHistory = "current_history";
+  static const String historyRecord = "history_record";
+  static const String pleaseSelect = "please_select";
 }

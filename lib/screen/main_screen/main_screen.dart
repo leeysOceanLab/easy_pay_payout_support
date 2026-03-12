@@ -310,11 +310,12 @@ class _MainScreenState extends State<MainScreen> {
           ? () => mainController.goToWithdrawalDetails(
               item.id!,
               detailsItem: null,
+              lockedByMe: lockedByMe,
             )
           : null,
       child: Container(
         width: double.infinity,
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 16).r,
+        padding: const EdgeInsets.fromLTRB(8, 8, 8, 8).r,
         decoration: BoxDecoration(
           color: AppColors.whiteColor,
           borderRadius: BorderRadius.circular(18).r,
@@ -327,42 +328,48 @@ class _MainScreenState extends State<MainScreen> {
             ),
           ],
         ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Column(
           children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  AppText(
-                    "${item.merchantName ?? "-"} • $typeText",
-                    fontSize: kFont14,
-                    fontWeight: FontWeight.w600,
-                    color: titleColor,
-                  ),
-                  10.heightSpace,
-                  AppText(
-                    item.txId ?? "-",
-                    fontSize: kFont16,
-                    fontWeight: FontWeight.w800,
-                    color: txIdColor,
-                  ),
-                ],
-              ),
-            ),
-            12.widthSpace,
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildStatusBadge(
-                  isLocked: isLocked,
-                  lockedByMe: lockedByMe,
-                  lockedByOther: lockedByOther,
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      AppText(
+                        typeText,
+                        fontSize: kFont14,
+                        fontWeight: FontWeight.w600,
+                        color: titleColor,
+                      ),
+                      10.heightSpace,
+                      AppText(
+                        item.txId ?? "-",
+                        fontSize: kFont16,
+                        fontWeight: FontWeight.w800,
+                        color: txIdColor,
+                      ),
+                    ],
+                  ),
                 ),
-                _buildAmountDisplay(item.withdrawAmount),
+                12.widthSpace,
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    _buildStatusBadge(
+                      isLocked: isLocked,
+                      lockedByMe: lockedByMe,
+                      lockedByOther: lockedByOther,
+                    ),
+                    _buildAmountDisplay(item.withdrawAmount),
+                  ],
+                ),
               ],
             ),
+            5.heightSpace,
+            _buildWithdrawalExtraInfoSection(item),
           ],
         ),
       ),
@@ -426,6 +433,86 @@ class _MainScreenState extends State<MainScreen> {
           fontSize: kFont18,
           fontWeight: FontWeight.bold,
           color: AppColors.primaryNoContextColor,
+        ),
+      ],
+    );
+  }
+
+  String _displayValue(String? value) {
+    if (value == null || value.trim().isEmpty || value.trim() == "null") {
+      return "-";
+    }
+    return value.trim();
+  }
+
+  Widget _buildWithdrawalExtraInfoSection(WithdrawalOrderModel item) {
+    final bool isKuaizhuan = (item.type ?? "").toLowerCase() == "kuaizhuan";
+
+    final String firstLabel = isKuaizhuan
+        ? context.tr(AppStrings.mobileNumber)
+        : context.tr(AppStrings.bankAccount);
+
+    final String firstValue = isKuaizhuan
+        ? _displayValue(item.mobileNo)
+        : _displayValue(item.accountNumber);
+
+    final String secondLabel = isKuaizhuan
+        ? context.tr(AppStrings.holderName)
+        : context.tr(AppStrings.accountName);
+
+    final String secondValue = isKuaizhuan
+        ? _displayValue(item.holderName)
+        : _displayValue(item.accountName);
+
+    final String thirdLabel = context.tr(AppStrings.bankName);
+
+    final String thridValue = _displayValue(item.bankName);
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12).r,
+      decoration: BoxDecoration(
+        color: AppColors.lightGreyBackgroundColor,
+        borderRadius: BorderRadius.circular(14).r,
+        border: Border.all(color: AppColors.greyLightColor),
+      ),
+      child: Column(
+        children: [
+          _buildWithdrawalExtraInfoRow(label: firstLabel, value: firstValue),
+          10.heightSpace,
+          _buildWithdrawalExtraInfoRow(label: secondLabel, value: secondValue),
+          if (!isKuaizhuan) 10.heightSpace,
+          if (!isKuaizhuan)
+            _buildWithdrawalExtraInfoRow(label: thirdLabel, value: thridValue),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWithdrawalExtraInfoRow({
+    required String label,
+    required String value,
+  }) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: 96.w,
+          child: AppText(
+            label,
+            fontSize: kFont12,
+            fontWeight: FontWeight.w500,
+            color: AppColors.secondaryTextColor,
+          ),
+        ),
+        8.widthSpace,
+        Expanded(
+          child: AppText(
+            value,
+            fontSize: kFont13,
+            fontWeight: FontWeight.w600,
+            color: AppColors.primaryTextColor,
+          ),
         ),
       ],
     );

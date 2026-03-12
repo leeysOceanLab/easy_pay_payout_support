@@ -83,13 +83,15 @@ class Api {
   /// Withdrawl list
   Future<void> getWithdrawalsApprovedList({
     required int page,
+    bool? isCurrent = true,
     String? dateFrom,
     String? dateTo,
     required Function(ApiResponseModel) onSuccess,
     bool showLoader = false,
     Function(String)? onError,
   }) async {
-    String endPoint = "$kWithdrawalApprovedList?page=$page";
+    String endPoint =
+        "$kWithdrawalApprovedList?page=$page&is_current=${isCurrent == true ? "1" : "0"}";
 
     if (dateFrom != null && dateFrom.isNotEmpty) {
       endPoint += "&date_from=${Uri.encodeComponent(dateFrom)}";
@@ -104,11 +106,9 @@ class Api {
       apiUrl: apiUrl,
       endPoint: endPoint,
       withBearer: true,
-
       onSuccess: onSuccess,
       onError: (error) {
         ToastHelper.showToast(error);
-
         if (onError != null) {
           onError(error);
         }
@@ -151,6 +151,30 @@ class Api {
       showLoader: showLoader,
       apiUrl: apiUrl,
       endPoint: "/admin-withdraw/withdrawals/${id.toString()}/release",
+      withBearer: true,
+      params: {},
+      onSuccess: onSuccess,
+      onError: (error) {
+        ToastHelper.showToast(error);
+
+        if (onError != null) {
+          onError(error);
+        }
+      },
+    );
+  }
+
+  /// Release Withdrawal
+  Future<void> cancelWithdrawal({
+    required int id,
+    required Function(ApiResponseModel) onSuccess,
+    bool showLoader = false,
+    Function(String)? onError,
+  }) async {
+    await HttpClientCustom.httpPost(
+      showLoader: showLoader,
+      apiUrl: apiUrl,
+      endPoint: "/admin-withdraw/withdrawals/${id.toString()}/cancel",
       withBearer: true,
       params: {},
       onSuccess: onSuccess,

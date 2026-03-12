@@ -9,6 +9,11 @@ class WithdrawalOrderModel {
   final String? createdAt;
   final bool? isLocked;
   final bool? lockedByMe;
+  final String? bankName;
+  final String? accountName;
+  final String? accountNumber;
+  final String? holderName;
+  final String? mobileNo;
 
   WithdrawalOrderModel({
     this.id,
@@ -21,6 +26,11 @@ class WithdrawalOrderModel {
     this.createdAt,
     this.isLocked,
     this.lockedByMe,
+    this.bankName,
+    this.accountName,
+    this.accountNumber,
+    this.holderName,
+    this.mobileNo,
   });
 
   factory WithdrawalOrderModel.fromJson(Map<String, dynamic> json) {
@@ -35,6 +45,11 @@ class WithdrawalOrderModel {
       createdAt: json["created_at"]?.toString(),
       isLocked: json["is_locked"] == true,
       lockedByMe: json["locked_by_me"] == true,
+      bankName: json["bank_name"]?.toString(),
+      accountName: json["account_name"]?.toString(),
+      accountNumber: json["account_number"]?.toString(),
+      holderName: json["holder_name"]?.toString(),
+      mobileNo: json["mobile_no"]?.toString(),
     );
   }
 
@@ -50,6 +65,11 @@ class WithdrawalOrderModel {
       "created_at": createdAt,
       "is_locked": isLocked,
       "locked_by_me": lockedByMe,
+      "bank_name": bankName,
+      "account_name": accountName,
+      "account_number": accountNumber,
+      "holder_name": holderName,
+      "mobile_no": mobileNo,
     };
   }
 
@@ -64,6 +84,11 @@ class WithdrawalOrderModel {
     String? createdAt,
     bool? isLocked,
     bool? lockedByMe,
+    String? bankName,
+    String? accountName,
+    String? accountNumber,
+    String? holderName,
+    String? mobileNo,
   }) {
     return WithdrawalOrderModel(
       id: id ?? this.id,
@@ -76,6 +101,11 @@ class WithdrawalOrderModel {
       createdAt: createdAt ?? this.createdAt,
       isLocked: isLocked ?? this.isLocked,
       lockedByMe: lockedByMe ?? this.lockedByMe,
+      bankName: bankName ?? this.bankName,
+      accountName: accountName ?? this.accountName,
+      accountNumber: accountNumber ?? this.accountNumber,
+      holderName: holderName ?? this.holderName,
+      mobileNo: mobileNo ?? this.mobileNo,
     );
   }
 }

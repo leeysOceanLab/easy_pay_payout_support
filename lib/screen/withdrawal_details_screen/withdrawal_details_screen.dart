@@ -4,12 +4,14 @@ class WithdrawalDetailsScreen extends StatefulWidget {
   final int id;
   final WithdrawalDetailsModel? initialDetails;
   final bool? isHistory;
+  final bool? isLockedByMe;
 
   const WithdrawalDetailsScreen({
     super.key,
     required this.id,
     this.initialDetails,
     this.isHistory,
+    this.isLockedByMe,
   });
 
   @override
@@ -24,7 +26,11 @@ class _WithdrawalDetailsScreenState extends State<WithdrawalDetailsScreen> {
   void initState() {
     super.initState();
     _withdrawalDetailsController = WithdrawalDetailsController()
-      ..setInit(widget.id, initialDetails: widget.initialDetails);
+      ..setInit(
+        widget.id,
+        initialDetails: widget.initialDetails,
+        isLockedByMe: widget.isLockedByMe,
+      );
   }
 
   @override
@@ -34,7 +40,7 @@ class _WithdrawalDetailsScreenState extends State<WithdrawalDetailsScreen> {
   }
 
   Future<void> _handleBack() async {
-    await _withdrawalDetailsController.releaseWithdrawal();
+    await _withdrawalDetailsController.releaseWithdrawal(null);
 
     if (!mounted) return;
     Navigator.of(context).pop(true);
@@ -138,7 +144,7 @@ class _WithdrawalDetailsScreenState extends State<WithdrawalDetailsScreen> {
                 ),
                 16.heightSpace,
                 AppText(
-                  context.tr(AppStrings.confirmIncompleteTitle),
+                  context.tr(AppStrings.confirmProblemOrderTitle),
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
                   color: AppColors.primaryTextColor,
@@ -146,7 +152,7 @@ class _WithdrawalDetailsScreenState extends State<WithdrawalDetailsScreen> {
                 ),
                 10.heightSpace,
                 AppText(
-                  context.tr(AppStrings.confirmIncompleteMessage),
+                  context.tr(AppStrings.confirmProblemOrderMessage),
                   fontSize: 14,
                   color: AppColors.secondaryTextColor,
                   textAlign: TextAlign.center,
@@ -368,14 +374,22 @@ class _WithdrawalDetailsScreenState extends State<WithdrawalDetailsScreen> {
     final bool shouldContinue = await _showCompleteConfirmDialog(context);
     if (!shouldContinue) return;
 
+    if (!context.mounted) return;
+
     final ConfirmWithdrawalResult result = await controller.confirmWithdrawal();
 
-    if (!mounted) return;
+    if (!context.mounted) return;
     if (!result.isSuccess) return;
 
     final WithdrawalDetailsModel? nextWithdrawal = result.nextWithdrawal;
 
     if (nextWithdrawal == null) {
+      final String successText = context.tr(AppStrings.success);
+      final String confirmedText = context.tr(
+        AppStrings.withdrawalConfirmedSuccessfully,
+      );
+      final String okayText = context.tr(AppStrings.okay);
+
       final bool? shouldBack = await showDialog<bool>(
         context: context,
         barrierDismissible: false,
@@ -385,13 +399,13 @@ class _WithdrawalDetailsScreenState extends State<WithdrawalDetailsScreen> {
               borderRadius: BorderRadius.circular(20).r,
             ),
             title: AppText(
-              context.tr(AppStrings.success),
+              successText,
               fontSize: 18,
               fontWeight: FontWeight.w700,
               color: AppColors.primaryTextColor,
             ),
             content: AppText(
-              context.tr(AppStrings.withdrawalConfirmedSuccessfully),
+              confirmedText,
               fontSize: 14,
               color: AppColors.primaryTextColor,
             ),
@@ -401,7 +415,7 @@ class _WithdrawalDetailsScreenState extends State<WithdrawalDetailsScreen> {
                   Navigator.of(dialogContext).pop(true);
                 },
                 child: AppText(
-                  context.tr(AppStrings.okay),
+                  okayText,
                   fontSize: 14,
                   fontWeight: FontWeight.w700,
                   color: AppColors.completedButtonColor,
@@ -412,13 +426,35 @@ class _WithdrawalDetailsScreenState extends State<WithdrawalDetailsScreen> {
         },
       );
 
-      if (shouldBack == true && mounted) {
+      if (!context.mounted) return;
+
+      if (shouldBack == true) {
         Navigator.of(context).pop(true);
       }
       return;
     }
 
-    final String nextOrderId = nextWithdrawal.orderId ?? "-";
+    final String nextOrderId = nextWithdrawal.txId ?? "-";
+
+    String typeText = nextWithdrawal.type ?? "-";
+    if (typeText.toLowerCase() == "kuaizhuan") {
+      typeText = context.tr(AppStrings.fastTransfer);
+    } else if (typeText.toLowerCase() == "bank" ||
+        typeText.toLowerCase() == "bank_transfer") {
+      typeText = context.tr(AppStrings.bankTransfer);
+    }
+
+    final String successText = context.tr(AppStrings.success);
+    final String confirmedText = context.tr(
+      AppStrings.withdrawalConfirmedSuccessfully,
+    );
+    final String nextOrderText = context.tr(AppStrings.nextOrder);
+    final String amountText = context.tr(AppStrings.amount);
+    final String hkdText = context.tr(AppStrings.hkd);
+    final String merchantText = context.tr(AppStrings.merchant);
+    final String typeLabelText = context.tr(AppStrings.type);
+    final String endText = context.tr(AppStrings.end);
+    final String nextOneText = context.tr(AppStrings.nextOne);
 
     final String? action = await showDialog<String>(
       context: context,
@@ -426,7 +462,7 @@ class _WithdrawalDetailsScreenState extends State<WithdrawalDetailsScreen> {
       builder: (dialogContext) {
         return AlertDialog(
           title: AppText(
-            context.tr(AppStrings.success),
+            successText,
             fontSize: 18,
             fontWeight: FontWeight.w700,
             color: AppColors.primaryTextColor,
@@ -436,13 +472,28 @@ class _WithdrawalDetailsScreenState extends State<WithdrawalDetailsScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               AppText(
-                context.tr(AppStrings.withdrawalConfirmedSuccessfully),
+                confirmedText,
                 fontSize: 14,
                 color: AppColors.primaryTextColor,
               ),
               10.heightSpace,
               AppText(
-                "${context.tr(AppStrings.nextOrder)}: $nextOrderId",
+                "$nextOrderText: $nextOrderId",
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: AppColors.primaryTextColor,
+              ),
+              10.heightSpace,
+              AppText(
+                "$amountText: $hkdText ${nextWithdrawal.withdrawAmount}",
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: AppColors.primaryTextColor,
+              ),
+              6.heightSpace,
+
+              AppText(
+                "$typeLabelText: $typeText",
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
                 color: AppColors.primaryTextColor,
@@ -455,7 +506,7 @@ class _WithdrawalDetailsScreenState extends State<WithdrawalDetailsScreen> {
                 Navigator.of(dialogContext).pop("end");
               },
               child: AppText(
-                context.tr(AppStrings.end),
+                endText,
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
                 color: AppColors.redColor,
@@ -466,7 +517,7 @@ class _WithdrawalDetailsScreenState extends State<WithdrawalDetailsScreen> {
                 Navigator.of(dialogContext).pop("next");
               },
               child: AppText(
-                context.tr(AppStrings.nextOne),
+                nextOneText,
                 fontSize: 14,
                 fontWeight: FontWeight.w700,
                 color: AppColors.completedButtonColor,
@@ -477,15 +528,17 @@ class _WithdrawalDetailsScreenState extends State<WithdrawalDetailsScreen> {
       },
     );
 
-    if (action == "next") {
-      await controller.applyNextWithdrawal(nextWithdrawal);
-    } else if (action == "end") {
-      if (nextWithdrawal.id != null) {
-        await controller.releaseWithdrawalById(nextWithdrawal.id!);
-      }
+    if (!context.mounted) return;
 
-      if (!mounted) return;
-      Navigator.of(context).pop(true);
+    // continue your action handling here
+    if (action == "end") {
+      await controller.releaseWithdrawal(nextWithdrawal.id);
+      AppNavigator.pop(context);
+      return;
+    }
+
+    if (action == "next") {
+      controller.getMyLockedWithdrawal(nextWithdrawal.id ?? 0);
     }
   }
 
@@ -801,7 +854,7 @@ class _WithdrawalDetailsScreenState extends State<WithdrawalDetailsScreen> {
                                         ),
                                       ),
                                       child: AppText(
-                                        context.tr(AppStrings.incomplete),
+                                        context.tr(AppStrings.problemOrder),
                                         fontSize: 16,
                                         fontWeight: FontWeight.w700,
                                         color: AppColors.whiteColor,

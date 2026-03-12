@@ -1,3 +1,5 @@
+import 'package:lottie/lottie.dart';
+
 import '../../imports.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -105,7 +107,13 @@ class _SplashScreenState extends State<SplashScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       // backgroundColor: Colors.pink,
-      body: Center(child: CircularProgressIndicator()),
+      body: Center(
+        child: SizedBox(
+          height: 50.w,
+          width: 50.w,
+          child: Lottie.asset('assets/lotties/loading.json'),
+        ),
+      ),
     );
   }
 }

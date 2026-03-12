@@ -90,11 +90,12 @@ class MainController with ChangeNotifier {
   Future<void> goToWithdrawalDetails(
     int id, {
     WithdrawalDetailsModel? detailsItem,
+    bool? lockedByMe,
   }) async {
     await AppNavigator.pushNamed(
       context,
       RouteName.withdrawalDetails,
-      arguments: {"id": id, "details": detailsItem},
+      arguments: {"id": id, "details": detailsItem, "lockedByMe": lockedByMe},
     );
 
     onRefresh();

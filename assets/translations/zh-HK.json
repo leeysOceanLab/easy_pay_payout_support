@@ -76,8 +76,8 @@
   "release_to_load": "鬆開以載入",
   "load_no_data": "沒有更多資料",
   "withdrawal_orders": "代付清單",
-  "history": "紀錄",
-  "history_page_coming_soon": "紀錄頁面即將推出",
+  "history": "記錄",
+  "history_page_coming_soon": "記錄頁面即將推出",
   "go_details_page_later": "稍後前往詳情頁",
   "no_withdrawal_orders_yet": "暫無提款訂單",
   "pull_down_to_refresh_orders": "下拉以刷新訂單",
@@ -138,7 +138,7 @@
 
   "confirm": "確認",
   "confirm_incomplete_title": "確認未完成",
-  "confirm_incomplete_message": "你確定要將此代付單標記為未完成？",
+  "confirm_incomplete_message": "確定要將此代付單標記為問題訂單？",
   "confirm_complete_title": "確認完成",
   "confirm_complete_message": "你確定要完成此代付單？",
   "logout_confirmation": "你確定要登出嗎？",
@@ -150,5 +150,11 @@
   "from_date": "開始日期",
   "to_date": "結束日期",
   "total_amount": "總金額",
-  "reset": "重設"
+  "reset": "重設",
+  "current_history": "目前記錄",
+  "history_record": "歷史記錄",
+  "please_select": "請選擇",
+  "problem_order": "問題訂單",
+  "confirm_problem_order_title": "確認問題訂單",
+  "confirm_problem_order_message": "確定要將此代付單標記為問題訂單？"
 }

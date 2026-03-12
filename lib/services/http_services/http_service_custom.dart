@@ -62,7 +62,10 @@ class HttpServiceCustom {
 
     try {
       final responseModel = ApiResponseModel.fromJson(response.data);
-      print("Response Data: ${responseModel.status}");
+      print("Response Status: ${responseModel.status}");
+      print("Response Message: ${responseModel.message}");
+      print("Response Data: ${responseModel.data}");
+      print("Response StatusCode: ${response.statusCode}");
       switch (response.statusCode) {
         case 200:
         case 201:
@@ -92,6 +95,7 @@ class HttpServiceCustom {
           _handleErrorResponse(errorMessage, onError);
       }
     } catch (e) {
+      print("Error responseHandler - $e ");
       _handleErrorResponse(context.tr(AppStrings.somethingWentWrong), onError);
     }
   }
