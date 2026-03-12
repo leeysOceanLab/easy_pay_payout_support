@@ -1,6 +1,6 @@
 import 'package:easy_pay_bank_infomrm/constants/shared_prefs_constant.dart';
 import 'package:easy_pay_bank_infomrm/controller/login_controller.dart';
-import 'package:easy_pay_bank_infomrm/utils/shared_prefs.dart';
+import 'package:easy_pay_bank_infomrm/controller/session_controller.dart';
 
 import '../../imports.dart';
 
@@ -18,6 +18,12 @@ class _LoginScreenState extends State<LoginScreen> {
   void initState() {
     super.initState();
     _loginController = LoginController()..setInit();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      context.read<SessionController>().stop();
+    });
+
     _loadRememberedUsername();
   }
 

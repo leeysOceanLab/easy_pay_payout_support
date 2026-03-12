@@ -3,9 +3,6 @@
 
 // Package imports:
 
-import "package:easy_pay_bank_infomrm/screen/history_details_screen/history_withdrawal_details_screen.dart";
-import "package:easy_pay_bank_infomrm/screen/main_screen/main_screen.dart";
-import "package:easy_pay_bank_infomrm/screen/screens.dart";
 import "package:page_transition/page_transition.dart";
 
 // Project imports:
@@ -41,7 +38,7 @@ class RouteGenerator {
           settings: settings,
           builder: (context) {
             final args = settings.arguments as Map<String, dynamic>?;
-            return MainScreen();
+            return const MainScreen();
           },
         );
 

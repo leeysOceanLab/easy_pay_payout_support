@@ -226,7 +226,7 @@ class _HistoryWithdrawalDetailsScreenState
               ? context.tr(AppStrings.fastTransfer)
               : context.tr(AppStrings.bankTransfer);
 
-          return Scaffold(
+          return SessionAwareScaffold(
             backgroundColor: AppColors.pageBgColor,
             appBar: AppBar(
               elevation: 0,

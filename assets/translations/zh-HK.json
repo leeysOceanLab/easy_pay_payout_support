@@ -157,5 +157,8 @@
   "problem_order": "問題訂單",
   "confirm_problem_order_title": "確認問題訂單",
   "confirm_problem_order_message": "確定要將此代付單標記為問題訂單？",
-  "logging_out": "登出中"
+  "logging_out": "登出中",
+  "session_expired": "登入已逾時",
+  "inactive_logout_message": "您已超過 15 分鐘沒有操作，請重新登入。",
+  "until_now": "至今"
 }

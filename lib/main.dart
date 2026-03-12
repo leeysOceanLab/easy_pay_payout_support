@@ -1,4 +1,5 @@
 import "package:easy_pay_bank_infomrm/configs/app_config.dart";
+import "package:easy_pay_bank_infomrm/controller/session_controller.dart";
 import "package:flutter/cupertino.dart";
 import "package:bot_toast/bot_toast.dart";
 import "package:easy_pay_bank_infomrm/routes/route_generator.dart";
@@ -25,7 +26,16 @@ Future<void> bootstrap(AppConfig config) async {
       fallbackLocale: const Locale('zh', 'HK'),
       startLocale: const Locale('zh', 'HK'),
       child: MultiProvider(
-        providers: [ChangeNotifierProvider(create: (_) => AppController())],
+        providers: [
+          ChangeNotifierProvider(create: (_) => AppController()),
+          ChangeNotifierProvider(
+            create: (_) {
+              final controller = SessionController();
+              controller.init();
+              return controller;
+            },
+          ),
+        ],
         child: const MyApp(),
       ),
     ),
@@ -54,6 +64,7 @@ class MyApp extends StatefulWidget {
 class _MyAppState extends State<MyApp> {
   final BotToastNavigatorObserver _botToastNavigatorObserver =
       BotToastNavigatorObserver();
+  final RouteTracker _routeTracker = RouteTracker();
 
   @override
   void initState() {
@@ -84,7 +95,10 @@ class _MyAppState extends State<MyApp> {
           debugShowCheckedModeBanner: false,
           initialRoute: RouteName.splashPage,
           onGenerateRoute: RouteGenerator.generateRoute,
-          navigatorObservers: <NavigatorObserver>[_botToastNavigatorObserver],
+          navigatorObservers: <NavigatorObserver>[
+            _botToastNavigatorObserver,
+            _routeTracker,
+          ],
           builder: (context, widget) {
             widget = botToastBuilder(context, widget);
             return widget ?? const SizedBox.shrink();

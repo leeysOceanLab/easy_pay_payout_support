@@ -129,7 +129,7 @@ class _HistoryTabContentState extends State<HistoryTabContent> {
         ),
         5.heightSpace,
         AppText(
-          "${_formatTopDate(tryParseDate(controller.shiftStart))} - ${_formatTopDate(tryParseDate(controller.shiftEnd))}",
+          "${_formatTopDate(tryParseDate(controller.shiftStart), context.tr(AppStrings.fromDate))} - ${_formatTopDate(tryParseDate(controller.shiftEnd), context.tr(AppStrings.untilNow))}",
           fontSize: kFont14,
           fontWeight: FontWeight.w500,
           color: AppColors.primaryTextColor,
@@ -214,7 +214,7 @@ class _HistoryTabContentState extends State<HistoryTabContent> {
                     ),
                     6.heightSpace,
                     AppText(
-                      _formatTopDate(controller.selectedDateFrom),
+                      _formatTopDate(controller.selectedDateFrom, null),
                       fontSize: kFont14,
                       fontWeight: FontWeight.normal,
                       color: AppColors.primaryTextColor,
@@ -235,7 +235,7 @@ class _HistoryTabContentState extends State<HistoryTabContent> {
                     ),
                     6.heightSpace,
                     AppText(
-                      _formatTopDate(controller.selectedDateTo),
+                      _formatTopDate(controller.selectedDateTo, null),
                       fontSize: kFont14,
                       fontWeight: FontWeight.normal,
                       color: AppColors.primaryTextColor,
@@ -268,8 +268,8 @@ class _HistoryTabContentState extends State<HistoryTabContent> {
     );
   }
 
-  String _formatTopDate(DateTime? value) {
-    if (value == null) return "請選擇";
+  String _formatTopDate(DateTime? value, String? msg) {
+    if (value == null) return msg ?? "請選擇";
 
     final String day = value.day.toString().padLeft(2, "0");
     final String month = value.month.toString().padLeft(2, "0");

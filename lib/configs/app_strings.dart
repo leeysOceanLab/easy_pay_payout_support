@@ -184,4 +184,9 @@ class AppStrings {
   static const String historyRecord = "history_record";
   static const String pleaseSelect = "please_select";
   static const String loggingOut = "logging_out";
+
+  static const String sessionExpired = "session_expired";
+  static const String inactiveLogoutMessage = "inactive_logout_message";
+
+  static const String untilNow = "until_now";
 }

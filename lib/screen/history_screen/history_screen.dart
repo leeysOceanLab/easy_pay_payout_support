@@ -26,7 +26,7 @@ class _HistoryScreenState extends State<HistoryScreen>
       create: (_) => HistoryController()..setInit(this),
       child: Consumer<HistoryController>(
         builder: (BuildContext context, controller, _) {
-          return Scaffold(
+          return SessionAwareScaffold(
             backgroundColor: AppColors.pageBgColor,
             appBar: AppBar(
               elevation: 0,

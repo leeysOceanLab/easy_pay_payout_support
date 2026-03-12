@@ -1,5 +1,7 @@
 // Project imports:
 
+import 'package:easy_pay_bank_infomrm/controller/session_controller.dart';
+
 import '../imports.dart';
 
 class AppController with ChangeNotifier {
@@ -25,21 +27,27 @@ class AppController with ChangeNotifier {
   // update user
   set setUser(UserModel value) {}
 
-  Future<void> logout(BuildContext context) async {
-    final String loggingOutText = context.tr(AppStrings.loggingOut);
+  Future<void> logout() async {
+    final BuildContext? currentContext =
+        NavigationService.navigatorKey.currentContext;
 
-    Loader.show(status: "$loggingOutText...");
+    Loader.show(status: currentContext?.tr(AppStrings.loggingOut) ?? "登出中...");
 
-    await ApiService.deleteApiToken();
+    try {
+      await ApiService.deleteApiToken();
 
-    if (!context.mounted) {
+      final navigatorState = NavigationService.navigatorKey.currentState;
+      if (navigatorState == null) {
+        Loader.hide();
+        return;
+      }
+
+      navigatorState.pushNamedAndRemoveUntil(
+        RouteName.loginPage,
+        (route) => false,
+      );
+    } finally {
       Loader.hide();
-      return;
     }
-
-    Loader.hide();
-
-    AppNavigator.popUntil(context, RouteName.mainPage);
-    AppNavigator.pushReplacementNamed(context, RouteName.loginPage);
   }
 }

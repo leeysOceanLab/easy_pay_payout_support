@@ -69,7 +69,7 @@ class BottomSheetLogout extends StatelessWidget {
                     child: AppButtonWidget(
                       onTap: () async {
                         AppNavigator.pop(context);
-                        await context.read<AppController>().logout(context);
+                        await context.read<AppController>().logout();
                       },
                       text: context.tr(AppStrings.yes),
                       radius: 100,

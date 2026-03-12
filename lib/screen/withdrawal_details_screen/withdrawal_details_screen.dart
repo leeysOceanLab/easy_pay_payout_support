@@ -634,7 +634,7 @@ class _WithdrawalDetailsScreenState extends State<WithdrawalDetailsScreen> {
               if (didPop) return;
               await _handleBack();
             },
-            child: Scaffold(
+            child: SessionAwareScaffold(
               backgroundColor: AppColors.pageBgColor,
               appBar: AppBar(
                 elevation: 0,

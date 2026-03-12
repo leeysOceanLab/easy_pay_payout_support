@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:easy_pay_bank_infomrm/controller/session_controller.dart';
 import '../../controller/app_controller.dart';
 import '../../imports.dart';
 import '../../utils/dialog_helper.dart';
@@ -133,7 +134,8 @@ class HttpServiceCustom {
     if (!_isLoggedOutDueToSession) {
       _isLoggedOutDueToSession = true;
       ToastHelper.showToast("Session expired");
-      NavigationService.context.read<AppController>().logout(context);
+      context.read<SessionController>().stop();
+      NavigationService.context.read<AppController>().logout();
     }
   }
 

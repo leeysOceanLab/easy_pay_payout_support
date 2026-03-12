@@ -1,4 +1,5 @@
 import 'package:easy_pay_bank_infomrm/controller/main_controller.dart';
+import 'package:easy_pay_bank_infomrm/controller/session_controller.dart';
 
 import '../../imports.dart';
 
@@ -10,12 +11,37 @@ class MainScreen extends StatefulWidget {
 }
 
 class _MainScreenState extends State<MainScreen> {
+  String appVersion = '';
+
   Future<void> _onTapHistory() async {
     await AppNavigator.pushNamed(
       context,
       RouteName.historyWithdrawalList,
       arguments: {},
     );
+  }
+
+  @override
+  void initState() {
+    super.initState();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _loadAppVersion();
+      context.read<SessionController>().start(
+        customTimeout: const Duration(minutes: 15),
+      );
+    });
+  }
+
+  Future<void> _loadAppVersion() async {
+    final PackageInfo packageInfo = await PackageInfo.fromPlatform();
+
+    if (!mounted) return;
+
+    setState(() {
+      appVersion = 'Version ${packageInfo.version}+${packageInfo.buildNumber}';
+    });
   }
 
   Future<void> _showLogoutDialog() async {
@@ -121,7 +147,7 @@ class _MainScreenState extends State<MainScreen> {
       create: (_) => MainController()..onRefresh(),
       child: Consumer<MainController>(
         builder: (BuildContext context, _mainController, _) {
-          return Scaffold(
+          return SessionAwareScaffold(
             backgroundColor: AppColors.pageBgColor,
             appBar: AppBar(
               elevation: 0,
@@ -191,47 +217,73 @@ class _MainScreenState extends State<MainScreen> {
                 ),
               ],
             ),
-            body: SmartRefresherWrapper(
-              controller: _mainController.refreshController,
-              enablePullDown: true,
-              enablePullUp:
-                  !_mainController.isLoading &&
-                  _mainController.withdrawalList.isNotEmpty,
-              isLoading: _mainController.isLoading,
-              onRefresh: _mainController.onRefresh,
-              onLoading: _mainController.onLoading,
-              child: _mainController.withdrawalList.isEmpty
-                  ? _buildEmptyView()
-                  : ListView(
-                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 24).r,
-                      children: [
-                        ..._mainController.groupedWithdrawalList.entries.map((
-                          entry,
-                        ) {
-                          final String date = entry.key;
-                          final List<WithdrawalOrderModel> items = entry.value;
-
-                          return Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+            body: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: SmartRefresherWrapper(
+                    controller: _mainController.refreshController,
+                    enablePullDown: true,
+                    enablePullUp:
+                        !_mainController.isLoading &&
+                        _mainController.withdrawalList.isNotEmpty,
+                    isLoading: _mainController.isLoading,
+                    onRefresh: _mainController.onRefresh,
+                    onLoading: _mainController.onLoading,
+                    child: _mainController.withdrawalList.isEmpty
+                        ? _buildEmptyView()
+                        : ListView(
+                            padding: const EdgeInsets.fromLTRB(
+                              16,
+                              12,
+                              16,
+                              24,
+                            ).r,
                             children: [
-                              _buildDateHeader(date),
-                              12.heightSpace,
-                              ...List.generate(items.length, (index) {
-                                final item = items[index];
-                                return Padding(
-                                  padding: const EdgeInsets.only(bottom: 12).r,
-                                  child: _buildTransactionItem(
-                                    item,
-                                    _mainController,
-                                  ),
-                                );
-                              }),
-                              12.heightSpace,
+                              ..._mainController.groupedWithdrawalList.entries
+                                  .map((entry) {
+                                    final String date = entry.key;
+                                    final List<WithdrawalOrderModel> items =
+                                        entry.value;
+
+                                    return Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        _buildDateHeader(date),
+                                        12.heightSpace,
+                                        ...List.generate(items.length, (index) {
+                                          final item = items[index];
+                                          return Padding(
+                                            padding: const EdgeInsets.only(
+                                              bottom: 12,
+                                            ).r,
+                                            child: _buildTransactionItem(
+                                              item,
+                                              _mainController,
+                                            ),
+                                          );
+                                        }),
+                                        12.heightSpace,
+                                      ],
+                                    );
+                                  }),
                             ],
-                          );
-                        }),
-                      ],
+                          ),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Center(
+                    child: AppText(
+                      appVersion,
+                      color: AppColors.primaryLightColor,
+                      fontSize: kFont12,
                     ),
+                  ),
+                ),
+              ],
             ),
           );
         },
