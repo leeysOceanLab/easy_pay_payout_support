@@ -84,6 +84,7 @@ class HttpServiceCustom {
               responseModel.message ??
               context.tr(AppStrings.somethingWentWrong);
           _handleErrorResponse(errorMessage, onError);
+          _handleSessionExpired();
           break;
         case 403:
           _handleSessionExpired();
