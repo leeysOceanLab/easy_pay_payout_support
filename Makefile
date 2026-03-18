@@ -1,7 +1,7 @@
 run:
 	flutter run --flavor staging -t lib/main.dart
 
-build:
+build-staging:
 	flutter clean && flutter pub get && flutter build apk --release --flavor staging -t lib/main.dart
 
 run-easy-pay:
