@@ -45,6 +45,8 @@ dependencies:
   ntp: ^2.0.0
   calendar_date_picker2: ^2.0.1
   omni_datetime_picker: ^2.3.1
+  flutter_local_notifications: ^21.0.0
+  awesome_notifications: ^0.11.0
 
 dev_dependencies:
   flutter_test:

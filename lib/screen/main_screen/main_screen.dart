@@ -192,6 +192,7 @@ class _MainScreenState extends State<MainScreen> {
                   padding: const EdgeInsets.only(right: 12).r,
                   child: TextButton.icon(
                     onPressed: _showLogoutDialog,
+
                     style: TextButton.styleFrom(
                       foregroundColor: AppColors.primaryColor,
                       padding: const EdgeInsets.symmetric(

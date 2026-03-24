@@ -5,6 +5,7 @@ plugins {
 }
 
 android {
+    // 保持你的 namespace
     namespace = "com.example.easy_pay_bank_infomrm"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
@@ -32,19 +33,24 @@ android {
     }
 
     compileOptions {
+        isCoreLibraryDesugaringEnabled = true
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
 
+    // 修复警告：使用最新的 compilerOptions 写法
     kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_17.toString()
+        jvmTarget = "17"
     }
 
     defaultConfig {
-        minSdk = flutter.minSdkVersion
-        targetSdk = flutter.targetSdkVersion
+        // 修复报错：将 targetSdk 改为 targetSdkVersion
+        minSdk = flutter.minSdkVersion 
+        targetSdk = flutter.targetSdkVersion 
+        
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        multiDexEnabled = true
     }
 
     buildTypes {
@@ -56,4 +62,9 @@ android {
 
 flutter {
     source = "../.."
+}
+
+dependencies {
+    // 核心脱糖库
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
 }

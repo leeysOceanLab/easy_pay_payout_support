@@ -39,6 +39,31 @@ class _WithdrawalDetailsScreenState extends State<WithdrawalDetailsScreen> {
     super.dispose();
   }
 
+  void _syncToNotification(
+    WithdrawalDetailsModel details,
+    WithdrawalDetailsController controller,
+  ) {
+    final bool isKuaizhuan = _isKuaizhuan(details.type);
+    if (!controller.isLoading && details.txId != null) {
+      Future.microtask(() {
+        NotificationService.showOrderNotification(
+          isKuaizhuan: _isKuaizhuan(details.type),
+          type: _isKuaizhuan(details.type)
+              ? AppStrings.fastTransfer.tr()
+              : AppStrings.bankTransfer.tr(),
+          txId: details.txId ?? "-",
+          amount: _sanitizeAmountForCopy(details.withdrawAmount),
+          name: _isKuaizhuan(details.type)
+              ? (details.holderName ?? "-")
+              : (details.accountName ?? "-"),
+          bankName: details.bankName ?? "-",
+          accountNumber: details.accountNumber ?? "-",
+          mobile: details.mobileNo ?? "-",
+        );
+      });
+    }
+  }
+
   Future<void> _handleBack() async {
     await _withdrawalDetailsController.releaseWithdrawal(null);
 
@@ -627,6 +652,12 @@ class _WithdrawalDetailsScreenState extends State<WithdrawalDetailsScreen> {
           final String typeText = isKuaizhuan
               ? context.tr(AppStrings.fastTransfer)
               : context.tr(AppStrings.bankTransfer);
+
+          // 当数据加载完成，且不是在加载状态时，更新通知
+          if (!controller.isLoading && details.id != null) {
+            // 建议使用 Future.microtask 确保不在 build 过程中直接触发 setState 相关操作
+            Future.microtask(() => _syncToNotification(details, controller));
+          }
 
           return PopScope(
             canPop: false,

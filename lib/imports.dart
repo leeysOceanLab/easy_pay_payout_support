@@ -35,6 +35,7 @@ export 'package:ntp/ntp.dart';
 export 'package:omni_datetime_picker/omni_datetime_picker.dart';
 
 // Project files
+export '../../services/notification/notification_service.dart';
 export 'package:easy_pay_bank_infomrm/components/widgets/session_aware_scaffold.dart';
 export 'package:easy_pay_bank_infomrm/services/session_activity.dart';
 export "package:easy_pay_bank_infomrm/routes/route_tracker.dart";

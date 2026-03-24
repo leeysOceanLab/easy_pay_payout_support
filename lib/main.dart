@@ -1,5 +1,6 @@
 import "package:easy_pay_bank_infomrm/configs/app_config.dart";
 import "package:easy_pay_bank_infomrm/controller/session_controller.dart";
+import "package:easy_pay_bank_infomrm/services/notification/notification_service.dart";
 import "package:flutter/cupertino.dart";
 import "package:bot_toast/bot_toast.dart";
 import "package:easy_pay_bank_infomrm/routes/route_generator.dart";
@@ -11,7 +12,7 @@ Future<void> bootstrap(AppConfig config) async {
   WidgetsFlutterBinding.ensureInitialized();
 
   AppConfig.instance = config;
-
+  await NotificationService.init(); // 初始化
   await EasyLocalization.ensureInitialized();
   await SecureStorage().init();
   await SharedPrefs.instance.init();
