@@ -189,4 +189,9 @@ class AppStrings {
   static const String inactiveLogoutMessage = "inactive_logout_message";
 
   static const String untilNow = "until_now";
+
+  static const String copyAmount = "copy_amount";
+  static const String copyName = "copy_name";
+  static const String copyPhone = "copy_phone";
+  static const String copyAccountNumber = "copy_account_number";
 }

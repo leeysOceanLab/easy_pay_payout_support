@@ -160,5 +160,9 @@
   "logging_out": "登出中",
   "session_expired": "登入已逾時",
   "inactive_logout_message": "您已超過 15 分鐘沒有操作，請重新登入。",
-  "until_now": "至今"
+  "until_now": "至今",
+  "copy_amount": "复制金额",
+  "copy_name": "复制户名",
+  "copy_phone": "复制电话", 
+  "copy_account_number": "复制账号"
 }

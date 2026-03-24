@@ -25,6 +25,7 @@ class _WithdrawalDetailsScreenState extends State<WithdrawalDetailsScreen> {
   @override
   void initState() {
     super.initState();
+    NotificationService.clearOrderNotification();
     _withdrawalDetailsController = WithdrawalDetailsController()
       ..setInit(
         widget.id,
@@ -36,6 +37,7 @@ class _WithdrawalDetailsScreenState extends State<WithdrawalDetailsScreen> {
   @override
   void dispose() {
     _withdrawalDetailsController.dispose();
+    NotificationService.clearOrderNotification();
     super.dispose();
   }
 
@@ -46,19 +48,16 @@ class _WithdrawalDetailsScreenState extends State<WithdrawalDetailsScreen> {
     final bool isKuaizhuan = _isKuaizhuan(details.type);
     if (!controller.isLoading && details.txId != null) {
       Future.microtask(() {
-        NotificationService.showOrderNotification(
-          isKuaizhuan: _isKuaizhuan(details.type),
-          type: _isKuaizhuan(details.type)
-              ? AppStrings.fastTransfer.tr()
-              : AppStrings.bankTransfer.tr(),
-          txId: details.txId ?? "-",
-          amount: _sanitizeAmountForCopy(details.withdrawAmount),
-          name: _isKuaizhuan(details.type)
-              ? (details.holderName ?? "-")
-              : (details.accountName ?? "-"),
-          bankName: details.bankName ?? "-",
-          accountNumber: details.accountNumber ?? "-",
-          mobile: details.mobileNo ?? "-",
+        NotificationService.showOrderNotificationIfNeeded(
+          withdrawalId: controller.withdrawalDetails.id ?? 0,
+          isKuaizhuan: controller.isKuaizhuan,
+          type: controller.withdrawalDetails.type ?? "",
+          txId: controller.withdrawalDetails.txId ?? "",
+          amount: controller.withdrawalDetails.withdrawAmount ?? "",
+          name: controller.withdrawalDetails.holderName ?? "",
+          bankName: controller.withdrawalDetails.bankName ?? "",
+          accountNumber: controller.withdrawalDetails.accountNumber ?? "",
+          mobile: controller.withdrawalDetails.mobileNo ?? "",
         );
       });
     }

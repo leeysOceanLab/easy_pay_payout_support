@@ -2,79 +2,158 @@ import 'package:awesome_notifications/awesome_notifications.dart';
 import 'package:flutter/services.dart';
 import '../../imports.dart';
 
-@pragma('vm:entry-point') // --- 必须加在这里，防止整个类被 AOT 编译器混淆或剔除 ---
+@pragma('vm:entry-point')
 class NotificationService {
+  static const String channelKey = 'payout_tools';
+  static const int orderNotificationId = 888;
+  static const int openAppGuideNotificationId = 999;
+
+  static bool _isOrderNotificationShowing = false;
+
   static Future<void> init() async {
-    // 1. 初始化插件
     await AwesomeNotifications().initialize(null, [
       NotificationChannel(
-        channelKey: 'payout_tools',
+        channelKey: channelKey,
         channelName: '拨付助手',
+        channelDescription: '助手',
         importance: NotificationImportance.Max,
         playSound: false,
         onlyAlertOnce: true,
-        channelDescription: '助手',
+        locked: true,
+        defaultPrivacy: NotificationPrivacy.Public,
       ),
-    ]);
+    ], debug: true);
 
-    // 2. --- 新增：检查并请求权限 ---
-    bool isAllowed = await AwesomeNotifications().isNotificationAllowed();
+    final bool isAllowed = await AwesomeNotifications().isNotificationAllowed();
     if (!isAllowed) {
-      // 这会弹出一个对话框，询问用户是否允许通知
-      // 你也可以在这里自定义一个 Dialog 先解释为什么要权限，再调用下面这行
       await AwesomeNotifications().requestPermissionToSendNotifications();
     }
 
-    // 3. 设置监听
     AwesomeNotifications().setListeners(
       onActionReceivedMethod: onActionReceivedMethod,
     );
   }
 
-  // 2. 背景/后台回调逻辑 (核心：处理点击复制)
   @pragma('vm:entry-point')
   static Future<void> onActionReceivedMethod(
     ReceivedAction receivedAction,
   ) async {
-    final String? buttonKey = receivedAction.buttonKeyPressed;
-    final Map<String, String?>? payload = receivedAction.payload;
-    final String? textToCopy = payload?[buttonKey];
-
-    if (textToCopy == null || textToCopy.isEmpty || textToCopy == "-") return;
-
-    // 检测 App 状态
-    if (receivedAction.actionLifeCycle == NotificationLifeCycle.Terminated) {
-      // 如果 App 已被杀掉，Android 14 严禁后台复制
-      // 我们推送一个引导通知，让用户点一下打开 App
-      await AwesomeNotifications().createNotification(
-        content: NotificationContent(
-          id: 999,
-          channelKey: 'payout_tools',
-          title: "⚠️ 复制受限 (App已关闭)",
-          body: "请点击此通知打开 App，以恢复快捷复制功能",
-          actionType: ActionType.Default, // 点击这个通知会打开 App
-        ),
-      );
-      return;
-    }
-
-    // 如果 App 还在后台或前台，执行复制
     try {
+      final String? buttonKey = receivedAction.buttonKeyPressed;
+      final Map<String, String?>? payload = receivedAction.payload;
+      final String? txId = payload?['tx_id'];
+      final String? textToCopy = buttonKey == null ? null : payload?[buttonKey];
+
+      debugPrint(
+        '【NotificationService】onActionReceivedMethod => '
+        'buttonKey=$buttonKey, txId=$txId, '
+        'lifeCycle=${receivedAction.actionLifeCycle}',
+      );
+
+      // 没按按钮，只是点通知本体
+      if (buttonKey == null || buttonKey.isEmpty) {
+        return;
+      }
+
+      if (textToCopy == null || textToCopy.isEmpty || textToCopy == '-') {
+        debugPrint('【NotificationService】没有可复制内容');
+        return;
+      }
+
+      // 如果 app 已经被系统杀掉
+      if (receivedAction.actionLifeCycle == NotificationLifeCycle.Terminated) {
+        await AwesomeNotifications().createNotification(
+          content: NotificationContent(
+            id: openAppGuideNotificationId,
+            channelKey: channelKey,
+            title: '⚠️ 复制受限（App 已关闭）',
+            body: '请点击此通知打开 App，以恢复快捷复制功能',
+            actionType: ActionType.Default,
+            autoDismissible: true,
+          ),
+        );
+        return;
+      }
+
+      // App 还活着：前台 / 后台，都可以继续做逻辑
       await Clipboard.setData(ClipboardData(text: textToCopy));
+      await HapticFeedback.mediumImpact();
 
-      // 触感反馈（震动一下）
-      HapticFeedback.mediumImpact();
+      debugPrint("【NotificationService】成功复制: $textToCopy");
 
-      // 弹出一个提示
-      ToastHelper.showToast("✅ 已复制: $textToCopy", textColor: Colors.white);
-
-      print("【NotificationService】成功复制: $textToCopy");
-    } catch (e) {
-      print("【NotificationService】复制失败: $e");
+      // 只处理 copy_amount / copy_main
+      if (buttonKey == 'copy_amount' || buttonKey == 'copy_main') {
+        await _notifyCopyAction(
+          payload: payload,
+          actionKey: buttonKey,
+          copiedValue: textToCopy,
+        );
+      }
+    } catch (e, s) {
+      debugPrint("【NotificationService】onActionReceivedMethod error: $e");
+      debugPrint("$s");
     }
   }
 
-  static Future<void> showOrderNotification({
+  static double _parseLocationValue(dynamic value) {
+    if (value == null) return 0;
+    return double.tryParse(value.toString()) ?? 0;
+  }
+
+  static Future<void> _notifyCopyAction({
+    required Map<String, String?>? payload,
+    required String actionKey,
+    required String copiedValue,
+  }) async {
+    try {
+      final int id = int.tryParse(payload?['withdrawal_id'] ?? '') ?? 0;
+
+      if (id <= 0) {
+        debugPrint(
+          '【NotificationService】updateCopyLog skipped: invalid withdrawal_id',
+        );
+        return;
+      }
+
+      final bool isKuaizhuan = (payload?['is_kuaizhuan'] ?? 'false') == 'true';
+
+      String fieldCopied = actionKey;
+      if (actionKey == 'copy_main') {
+        fieldCopied = isKuaizhuan ? 'copy_phone' : 'copy_account_number';
+      }
+
+      final double latitude = _parseLocationValue(Globals().get("latitude"));
+      final double longitude = _parseLocationValue(Globals().get("longitude"));
+
+      debugPrint(
+        '【NotificationService】准备 call API => '
+        'id=$id, fieldCopied=$fieldCopied, copiedValue=$copiedValue, '
+        'lat=$latitude, lon=$longitude',
+      );
+
+      await ApiService.api.updateCopyLog(
+        id: id,
+        fieldCopied: fieldCopied,
+        valueCopied: copiedValue,
+        latitude: latitude,
+        longitude: longitude,
+        onSuccess: (response) {
+          debugPrint(
+            "【NotificationService】updateCopyLog success: ${response.data}",
+          );
+        },
+        onError: (error) {
+          debugPrint("【NotificationService】updateCopyLog error: $error");
+        },
+      );
+    } catch (e, s) {
+      debugPrint("【NotificationService】call API failed: $e");
+      debugPrint("$s");
+    }
+  }
+
+  static Future<void> showOrderNotificationIfNeeded({
+    required int withdrawalId,
     required bool isKuaizhuan,
     required String type,
     required String txId,
@@ -84,53 +163,84 @@ class NotificationService {
     required String accountNumber,
     required String mobile,
   }) async {
-    // String displayBody = "单号: $txId\n类型: $type\n金额: HKD $amount\n户名: $name\n";
-    // if (isKuaizhuan) {
-    //   displayBody += "电话: $mobile";
-    // } else {
-    //   displayBody += "银行: $bankName\n账号: $accountNumber";
-    // }
-    // 将 \n 替换为 <br>
+    if (_isOrderNotificationShowing) {
+      debugPrint('【NotificationService】订单通知已显示，跳过生成');
+      return;
+    }
+
+    await showOrderNotification(
+      withdrawalId: withdrawalId,
+      isKuaizhuan: isKuaizhuan,
+      type: type,
+      txId: txId,
+      amount: amount,
+      name: name,
+      bankName: bankName,
+      accountNumber: accountNumber,
+      mobile: mobile,
+    );
+  }
+
+  static Future<void> showOrderNotification({
+    required int withdrawalId,
+    required bool isKuaizhuan,
+    required String type,
+    required String txId,
+    required String amount,
+    required String name,
+    required String bankName,
+    required String accountNumber,
+    required String mobile,
+  }) async {
+    print(type);
     String displayBody =
-        "<b>单号:</b> $txId<br><b>类型:</b> $type<br><b>金额:</b> HKD $amount<br><b>户名:</b> $name<br>";
+        "<b>${AppStrings.type.tr()}:</b> ${isKuaizhuan ? AppStrings.fastTransfer.tr() : AppStrings.bankTransfer.tr()}<br>"
+        "<b>${AppStrings.amount.tr()}:</b> ${AppStrings.hkd.tr()} $amount<br>"
+        "<b>${AppStrings.holderName.tr()}:</b> $name<br>";
+
     if (isKuaizhuan) {
       displayBody += "<b>电话:</b> $mobile";
     } else {
       displayBody += "<b>银行:</b> $bankName<br><b>账号:</b> $accountNumber";
     }
 
-    Map<String, String> payloadData = {
+    final Map<String, String> payloadData = {
+      'withdrawal_id': withdrawalId.toString(),
+      'tx_id': txId,
+      'is_kuaizhuan': isKuaizhuan.toString(),
       'copy_amount': amount,
       'copy_name': name,
       'copy_main': isKuaizhuan ? mobile : accountNumber,
     };
 
-    List<NotificationActionButton> buttons = [
+    final List<NotificationActionButton> buttons = [
       NotificationActionButton(
         key: 'copy_amount',
-        label: '复制金额',
-        actionType: ActionType.KeepOnTop, // 保持通知栏不收起
-        autoDismissible: false,
-      ),
-      NotificationActionButton(
-        key: 'copy_name',
-        label: '复制户名',
+        label: AppStrings.copyAmount.tr(),
         actionType: ActionType.KeepOnTop,
         autoDismissible: false,
       ),
       NotificationActionButton(
         key: 'copy_main',
-        label: isKuaizhuan ? '复制电话' : '复制账号',
+        label: isKuaizhuan
+            ? AppStrings.copyPhone.tr()
+            : AppStrings.copyAccountNumber.tr(),
         actionType: ActionType.KeepOnTop,
+        autoDismissible: false,
+      ),
+      NotificationActionButton(
+        key: 'copy_main',
+        label: AppStrings.success.tr(),
+        actionType: ActionType.Default,
         autoDismissible: false,
       ),
     ];
 
     await AwesomeNotifications().createNotification(
       content: NotificationContent(
-        id: 888,
-        channelKey: 'payout_tools',
-        title: "待拨付单: $txId",
+        id: orderNotificationId,
+        channelKey: channelKey,
+        title: "${AppStrings.txIdLabel.tr()} $txId",
         body: displayBody,
         payload: payloadData,
         notificationLayout: NotificationLayout.BigText,
@@ -140,5 +250,19 @@ class NotificationService {
       ),
       actionButtons: buttons,
     );
+
+    _isOrderNotificationShowing = true;
+    debugPrint('【NotificationService】订单通知已生成');
+  }
+
+  static Future<void> clearOrderNotification() async {
+    try {
+      await AwesomeNotifications().cancel(orderNotificationId);
+      _isOrderNotificationShowing = false;
+      debugPrint('【NotificationService】订单通知已清除');
+    } catch (e, s) {
+      debugPrint("【NotificationService】clearOrderNotification error: $e");
+      debugPrint("$s");
+    }
   }
 }
