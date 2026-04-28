@@ -11,7 +11,8 @@
     <application
         android:label="@string/app_name"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/ic_launcher"
+        android:allowBackup="false">
 
         <service android:name="me.carda.awesome_notifications.services.ForegroundService" 
                  android:enabled="true" 
@@ -37,6 +38,16 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
+
+        <!-- Android Bubble Activity — single instance, refreshes in place via broadcast -->
+        <activity
+            android:name=".BubbleActivity"
+            android:exported="false"
+            android:allowEmbedded="true"
+            android:resizeableActivity="true"
+            android:launchMode="singleTop"
+            android:windowSoftInputMode="adjustResize"
+            android:theme="@style/BubbleTheme"/>
 
         <meta-data
             android:name="flutterEmbedding"

@@ -7,6 +7,7 @@ import "package:easy_pay_bank_infomrm/routes/route_generator.dart";
 
 import "controller/app_controller.dart";
 import "imports.dart";
+import "services/notification/bubble_service.dart";
 
 Future<void> bootstrap(AppConfig config) async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -16,7 +17,10 @@ Future<void> bootstrap(AppConfig config) async {
   await EasyLocalization.ensureInitialized();
   await SecureStorage().init();
   await SharedPrefs.instance.init();
+  // Store apiBaseUrl so BubbleActivity (native Kotlin) can pass it to mainBubble
+  await SharedPrefs.instance.writeString('api_base_url', config.apiBaseUrl);
   await ApiService.init();
+  BubbleService.initTokenSyncHandler();
 
   runApp(
     EasyLocalization(

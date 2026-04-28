@@ -10,8 +10,9 @@ class MainScreen extends StatefulWidget {
   State<MainScreen> createState() => _MainScreenState();
 }
 
-class _MainScreenState extends State<MainScreen> {
+class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   String appVersion = '';
+  MainController? controller;
 
   Future<void> _onTapHistory() async {
     await AppNavigator.pushNamed(
@@ -24,6 +25,7 @@ class _MainScreenState extends State<MainScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
@@ -32,6 +34,19 @@ class _MainScreenState extends State<MainScreen> {
         customTimeout: const Duration(minutes: 15),
       );
     });
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      controller?.onRefresh();
+    }
   }
 
   Future<void> _loadAppVersion() async {
@@ -144,9 +159,12 @@ class _MainScreenState extends State<MainScreen> {
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
-      create: (_) => MainController()..onRefresh(),
+      create: (_) {
+        controller = MainController()..onRefresh();
+        return controller!;
+      },
       child: Consumer<MainController>(
-        builder: (BuildContext context, _mainController, _) {
+        builder: (BuildContext context, mainController, _) {
           return SessionAwareScaffold(
             backgroundColor: AppColors.pageBgColor,
             appBar: AppBar(
@@ -224,15 +242,15 @@ class _MainScreenState extends State<MainScreen> {
               children: [
                 Expanded(
                   child: SmartRefresherWrapper(
-                    controller: _mainController.refreshController,
+                    controller: mainController.refreshController,
                     enablePullDown: true,
                     enablePullUp:
-                        !_mainController.isLoading &&
-                        _mainController.withdrawalList.isNotEmpty,
-                    isLoading: _mainController.isLoading,
-                    onRefresh: _mainController.onRefresh,
-                    onLoading: _mainController.onLoading,
-                    child: _mainController.withdrawalList.isEmpty
+                        !mainController.isLoading &&
+                        mainController.withdrawalList.isNotEmpty,
+                    isLoading: mainController.isLoading,
+                    onRefresh: mainController.onRefresh,
+                    onLoading: mainController.onLoading,
+                    child: mainController.withdrawalList.isEmpty
                         ? _buildEmptyView()
                         : ListView(
                             padding: const EdgeInsets.fromLTRB(
@@ -242,7 +260,7 @@ class _MainScreenState extends State<MainScreen> {
                               24,
                             ).r,
                             children: [
-                              ..._mainController.groupedWithdrawalList.entries
+                              ...mainController.groupedWithdrawalList.entries
                                   .map((entry) {
                                     final String date = entry.key;
                                     final List<WithdrawalOrderModel> items =
@@ -262,7 +280,7 @@ class _MainScreenState extends State<MainScreen> {
                                             ).r,
                                             child: _buildTransactionItem(
                                               item,
-                                              _mainController,
+                                              mainController,
                                             ),
                                           );
                                         }),

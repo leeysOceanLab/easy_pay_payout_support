@@ -1,4 +1,5 @@
 import '../../imports.dart';
+import '../../services/notification/bubble_service.dart';
 
 class WithdrawalDetailsScreen extends StatefulWidget {
   final int id;
@@ -22,23 +23,176 @@ class WithdrawalDetailsScreen extends StatefulWidget {
 class _WithdrawalDetailsScreenState extends State<WithdrawalDetailsScreen> {
   late final WithdrawalDetailsController _withdrawalDetailsController;
 
+  // Tracks the last txId for which we triggered bubble this session.
+  // Resets to null on every initState so re-entering page always re-shows bubble.
+  String? _bubbleShownForTxId;
+
   @override
   void initState() {
     super.initState();
-    NotificationService.clearOrderNotification();
+    BubbleService.dismissAll();
     _withdrawalDetailsController = WithdrawalDetailsController()
       ..setInit(
         widget.id,
         initialDetails: widget.initialDetails,
         isLockedByMe: widget.isLockedByMe,
       );
+    _checkBubblePermission();
+  }
+
+  Future<void> _checkBubblePermission() async {
+    final bool allowed = await BubbleService.checkPermission();
+    if (allowed) return;
+    if (!mounted) return;
+
+    await Future.delayed(const Duration(milliseconds: 600));
+    if (!mounted) return;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20).r,
+        ),
+        title: Row(
+          children: [
+            Icon(
+              Icons.bubble_chart_rounded,
+              color: AppColors.primaryNoContextColor,
+              size: 22.sp,
+            ),
+            8.widthSpace,
+            AppText(
+              '开启气泡通知',
+              fontSize: 17,
+              fontWeight: FontWeight.w700,
+              color: AppColors.primaryTextColor,
+            ),
+          ],
+        ),
+        content: AppText(
+          '开启气泡后，切换到其他 App 时订单信息会以悬浮气泡方式显示，方便快速复制。\n\n请在下一页找到「气泡」选项并开启。',
+          fontSize: 14,
+          color: AppColors.secondaryTextColor,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: AppText(
+              '稍后',
+              fontSize: 14,
+              color: AppColors.secondaryTextColor,
+            ),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.of(ctx).pop();
+              BubbleService.openSettings();
+            },
+            child: AppText(
+              '去开启',
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              color: AppColors.primaryNoContextColor,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
   void dispose() {
     _withdrawalDetailsController.dispose();
-    NotificationService.clearOrderNotification();
+    BubbleService.dismissAll();
     super.dispose();
+  }
+
+  Future<void> _forceTriggerBubble(WithdrawalDetailsModel details) async {
+    if (!Platform.isAndroid) {
+      ToastHelper.showToast('Bubble is only available on Android');
+      return;
+    }
+
+    final String txId = details.txId ?? '';
+    if (txId.isEmpty) {
+      ToastHelper.showToast('Transaction ID is not ready yet');
+      return;
+    }
+
+    final bool isKuaizhuan = _isKuaizhuan(details.type);
+    final String amount = details.withdrawAmount ?? '';
+    final String amountCopy = _sanitizeAmountForCopy(amount);
+    final String name = details.holderName ?? details.accountName ?? '';
+    final String accountNumber = details.accountNumber ?? '';
+    final String mobile = details.mobileNo ?? '';
+
+    await BubbleService.showBubble(
+      withdrawalId: details.id ?? 0,
+      txId: txId,
+      isKuaizhuan: isKuaizhuan,
+      amount: amountCopy,
+      name: name,
+      accountNumber: accountNumber,
+      mobile: mobile,
+      token: await SecureStorage().readLoginToken() ?? '',
+    );
+
+    final bool allowed = await BubbleService.checkPermission();
+    ToastHelper.showToast(
+      allowed
+          ? 'Bubble triggered. Go Home or switch apps to see it.'
+          : 'Bubble sent. Please enable app bubbles in settings.',
+    );
+  }
+
+  Future<void> _showBubbleDebugInfo() async {
+    final Map<String, dynamic> info = await BubbleService.getDebugInfo();
+    if (!mounted) return;
+
+    final List<String> lines = [
+      'sdkInt: ${info['sdkInt']}',
+      'channelId: ${info['channelId']}',
+      'notificationsEnabled: ${info['notificationsEnabled']}',
+      'appBubblesAllowed: ${info['appBubblesAllowed']}',
+      'channelExists: ${info['channelExists']}',
+      'channelImportance: ${info['channelImportance']}',
+      'channelCanBubble: ${info['channelCanBubble']}',
+      'activeNotificationCount: ${info['activeNotificationCount']}',
+      if (info['error'] != null) 'error: ${info['error']}',
+    ];
+
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: AppText(
+          'Bubble Debug Info',
+          fontSize: 17,
+          fontWeight: FontWeight.w700,
+          color: AppColors.primaryTextColor,
+        ),
+        content: SingleChildScrollView(
+          child: SelectableText(
+            lines.join('\n'),
+            style: TextStyle(
+              fontSize: 14.sp,
+              color: AppColors.primaryTextColor,
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: AppText(
+              '关闭',
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              color: AppColors.primaryNoContextColor,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   void _syncToNotification(
@@ -47,17 +201,36 @@ class _WithdrawalDetailsScreenState extends State<WithdrawalDetailsScreen> {
   ) {
     final bool isKuaizhuan = _isKuaizhuan(details.type);
     if (!controller.isLoading && details.txId != null) {
-      Future.microtask(() {
-        NotificationService.showOrderNotificationIfNeeded(
-          withdrawalId: controller.withdrawalDetails.id ?? 0,
-          isKuaizhuan: controller.isKuaizhuan,
-          type: controller.withdrawalDetails.type ?? "",
-          txId: controller.withdrawalDetails.txId ?? "",
-          amount: controller.withdrawalDetails.withdrawAmount ?? "",
-          name: controller.withdrawalDetails.holderName ?? "",
-          bankName: controller.withdrawalDetails.bankName ?? "",
-          accountNumber: controller.withdrawalDetails.accountNumber ?? "",
-          mobile: controller.withdrawalDetails.mobileNo ?? "",
+      final String txId = controller.withdrawalDetails.txId ?? "";
+
+      // Only fire once per unique txId per page visit.
+      // _bubbleShownForTxId resets to null on every initState,
+      // so re-entering the page always re-shows bubble — even same txId.
+      if (_bubbleShownForTxId == txId) return;
+      _bubbleShownForTxId = txId;
+
+      final String amountCopy = _sanitizeAmountForCopy(
+        controller.withdrawalDetails.withdrawAmount,
+      );
+      final int withdrawalId = controller.withdrawalDetails.id ?? 0;
+      final String name = controller.withdrawalDetails.holderName ?? "";
+      final String accountNumber =
+          controller.withdrawalDetails.accountNumber ?? "";
+      final String mobile = controller.withdrawalDetails.mobileNo ?? "";
+
+      Future.microtask(() async {
+        BubbleService.showBubble(
+          withdrawalId: withdrawalId,
+          txId: txId,
+          isKuaizhuan: isKuaizhuan,
+          amount: amountCopy,
+          name: name,
+          accountNumber: accountNumber,
+          mobile: mobile,
+          bankName: controller.withdrawalDetails.bankName ?? '',
+          createdAt: controller.withdrawalDetails.createdAt ?? '',
+          lockExpiresAt: controller.withdrawalDetails.lockExpiresAt ?? '',
+          token: await SecureStorage().readLoginToken() ?? '',
         );
       });
     }
@@ -684,6 +857,26 @@ class _WithdrawalDetailsScreenState extends State<WithdrawalDetailsScreen> {
                   color: AppColors.primaryTextColor,
                   fontSize: kFont20,
                 ),
+                actions: Platform.isAndroid
+                    ? [
+                        IconButton(
+                          tooltip: 'Bubble debug',
+                          onPressed: _showBubbleDebugInfo,
+                          icon: Icon(
+                            Icons.bug_report_rounded,
+                            color: AppColors.primaryTextColor,
+                          ),
+                        ),
+                        IconButton(
+                          tooltip: 'Force bubble',
+                          onPressed: () => _forceTriggerBubble(details),
+                          icon: Icon(
+                            Icons.bubble_chart_rounded,
+                            color: AppColors.primaryNoContextColor,
+                          ),
+                        ),
+                      ]
+                    : null,
               ),
               body: SafeArea(
                 child: controller.isLoading

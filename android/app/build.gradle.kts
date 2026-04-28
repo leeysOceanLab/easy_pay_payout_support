@@ -67,4 +67,8 @@ flutter {
 dependencies {
     // 核心脱糖库
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
+
+    // Android Bubbles / Shortcut API
+    implementation("androidx.appcompat:appcompat:1.7.0")
+    implementation("androidx.core:core-ktx:1.13.1")
 }

@@ -1,4 +1,5 @@
 import "../imports.dart";
+import "notification/bubble_service.dart";
 
 class SessionTimeoutHelper {
   static bool _isDialogShowing = false;
@@ -10,6 +11,7 @@ class SessionTimeoutHelper {
     _isDialogShowing = true;
 
     try {
+      await BubbleService.notifyLogout();
       await ApiService.deleteApiToken();
 
       final BuildContext? dialogContext =

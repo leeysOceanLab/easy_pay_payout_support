@@ -1,7 +1,7 @@
-// Package imports:
-
 // Project imports:
 import '../imports.dart';
+import '../configs/app_config.dart';
+import '../services/notification/bubble_service.dart';
 
 class MainController with ChangeNotifier {
   BuildContext context = NavigationService.context;
@@ -92,13 +92,62 @@ class MainController with ChangeNotifier {
     WithdrawalDetailsModel? detailsItem,
     bool? lockedByMe,
   }) async {
-    await AppNavigator.pushNamed(
-      context,
-      RouteName.withdrawalDetails,
-      arguments: {"id": id, "details": detailsItem, "lockedByMe": lockedByMe},
+    WithdrawalDetailsModel? details = detailsItem;
+
+    if (details == null) {
+      bool success = false;
+      Loader.show();
+      await ApiService.api.lockWithdrawalDetails(
+        id: id,
+        onSuccess: (response) {
+          final raw = response.data['withdrawal'];
+          if (raw != null) {
+            details = WithdrawalDetailsModel.fromJson(
+              Map<String, dynamic>.from(raw),
+            );
+            success = true;
+          }
+        },
+        onError: (error) {},
+      );
+      Loader.hide();
+      if (!success || details == null) {
+        onRefresh();
+        return;
+      }
+    }
+
+    final d = details!;
+    final bool isKuaizhuan = (d.type ?? '').toLowerCase() == 'kuaizhuan';
+
+    await BubbleService.dismissAll();
+    await BubbleService.showBubble(
+      withdrawalId: d.id ?? 0,
+      txId: d.txId ?? '',
+      isKuaizhuan: isKuaizhuan,
+      amount: _sanitizeAmount(d.withdrawAmount),
+      name: d.holderName ?? d.accountName ?? '',
+      accountNumber: d.accountNumber ?? '',
+      mobile: d.mobileNo ?? '',
+      bankName: d.bankName ?? '',
+      createdAt: d.createdAt ?? '',
+      lockExpiresAt: d.lockExpiresAt ?? '',
+      token: await SecureStorage().readLoginToken() ?? '',
+      apiBaseUrl: AppConfig.instance.apiBaseUrl,
     );
 
     onRefresh();
+  }
+
+  String _sanitizeAmount(String? amount) {
+    if (amount == null) return '';
+    return amount
+        .replaceAll('HKD', '')
+        .replaceAll('hkd', '')
+        .replaceAll('RM', '')
+        .replaceAll('rm', '')
+        .replaceAll(',', '')
+        .trim();
   }
 
   Future<void> getWithdrawalList() async {

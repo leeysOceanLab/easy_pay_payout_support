@@ -1,4 +1,5 @@
 import '../imports.dart';
+import '../services/notification/bubble_service.dart';
 
 class LoginController extends ChangeNotifier {
   bool _isDisposed = false;
@@ -120,7 +121,7 @@ class LoginController extends ChangeNotifier {
       throw Exception("Invalid 2FA code");
     }
 
-    Loader.show();
+    await Loader.show();
 
     try {
       printLog(
@@ -134,6 +135,7 @@ class LoginController extends ChangeNotifier {
         deviceInfo: "",
         onSuccess: (response) async {
           await ApiService.updateApiToken(response.data["token"]);
+          await BubbleService.dismissAll();
 
           Loader.hide();
 
@@ -147,7 +149,6 @@ class LoginController extends ChangeNotifier {
         },
         onError: (error) {
           print("Login response Login error: $error");
-          ToastHelper.showToast(error);
           Loader.hide();
         },
       );

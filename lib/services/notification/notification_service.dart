@@ -1,5 +1,4 @@
 import 'package:awesome_notifications/awesome_notifications.dart';
-import 'package:flutter/services.dart';
 import '../../imports.dart';
 
 @pragma('vm:entry-point')
@@ -8,7 +7,6 @@ class NotificationService {
   static const int orderNotificationId = 888;
   static const int openAppGuideNotificationId = 999;
 
-  static bool _isOrderNotificationShowing = false;
 
   static Future<void> init() async {
     await AwesomeNotifications().initialize(null, [
@@ -50,8 +48,20 @@ class NotificationService {
         'lifeCycle=${receivedAction.actionLifeCycle}',
       );
 
-      // 没按按钮，只是点通知本体
+      // 点通知本体（没按按钮）→ 打开对应订单详情
       if (buttonKey == null || buttonKey.isEmpty) {
+        final int withdrawalId =
+            int.tryParse(payload?['withdrawal_id'] ?? '') ?? 0;
+        if (withdrawalId > 0) {
+          final context = NavigationService.navigatorKey.currentContext;
+          if (context != null) {
+            AppNavigator.pushNamed(
+              context,
+              RouteName.withdrawalDetails,
+              arguments: {'id': withdrawalId},
+            );
+          }
+        }
         return;
       }
 
@@ -152,6 +162,8 @@ class NotificationService {
     }
   }
 
+  // Kept for backwards compat — now just a direct passthrough.
+  // Caller is responsible for throttling (see WithdrawalDetailsScreen).
   static Future<void> showOrderNotificationIfNeeded({
     required int withdrawalId,
     required bool isKuaizhuan,
@@ -162,24 +174,17 @@ class NotificationService {
     required String bankName,
     required String accountNumber,
     required String mobile,
-  }) async {
-    if (_isOrderNotificationShowing) {
-      debugPrint('【NotificationService】订单通知已显示，跳过生成');
-      return;
-    }
-
-    await showOrderNotification(
-      withdrawalId: withdrawalId,
-      isKuaizhuan: isKuaizhuan,
-      type: type,
-      txId: txId,
-      amount: amount,
-      name: name,
-      bankName: bankName,
-      accountNumber: accountNumber,
-      mobile: mobile,
-    );
-  }
+  }) => showOrderNotification(
+    withdrawalId: withdrawalId,
+    isKuaizhuan: isKuaizhuan,
+    type: type,
+    txId: txId,
+    amount: amount,
+    name: name,
+    bankName: bankName,
+    accountNumber: accountNumber,
+    mobile: mobile,
+  );
 
   static Future<void> showOrderNotification({
     required int withdrawalId,
@@ -192,17 +197,32 @@ class NotificationService {
     required String accountNumber,
     required String mobile,
   }) async {
-    print(type);
-    String displayBody =
-        "<b>${AppStrings.type.tr()}:</b> ${isKuaizhuan ? AppStrings.fastTransfer.tr() : AppStrings.bankTransfer.tr()}<br>"
-        "<b>${AppStrings.amount.tr()}:</b> ${AppStrings.hkd.tr()} $amount<br>"
-        "<b>${AppStrings.holderName.tr()}:</b> $name<br>";
+    // Always cancel first — guarantees Android re-triggers heads-up banner
+    await AwesomeNotifications().cancel(orderNotificationId);
 
-    if (isKuaizhuan) {
-      displayBody += "<b>电话:</b> $mobile";
-    } else {
-      displayBody += "<b>银行:</b> $bankName<br><b>账号:</b> $accountNumber";
+    debugPrint('【NotificationService】showOrderNotification type=$type txId=$txId');
+
+    final String typeLabel = isKuaizhuan
+        ? AppStrings.fastTransfer.tr()
+        : AppStrings.bankTransfer.tr();
+    final String typeIcon = isKuaizhuan ? '⚡' : '🏦';
+    final String mainLabel = isKuaizhuan ? '📱' : '💳';
+    final String mainValue = isKuaizhuan ? mobile : accountNumber;
+
+    // Title: type icon + txId  (visible on heads-up peek)
+    final String title = '$typeIcon  $txId';
+
+    // Body: clean multi-line, visible when expanded
+    final StringBuffer body = StringBuffer();
+    body.write('💰 <b>HKD $amount</b><br>');
+    body.write('👤 $name<br>');
+    if (!isKuaizhuan && bankName.isNotEmpty && bankName != '-') {
+      body.write('🏦 $bankName<br>');
     }
+    body.write('$mainLabel $mainValue');
+
+    // Summary line shown on collapsed (1-line) peek
+    final String summary = '$typeLabel  ·  HKD $amount  ·  $name';
 
     final Map<String, String> payloadData = {
       'withdrawal_id': withdrawalId.toString(),
@@ -210,29 +230,29 @@ class NotificationService {
       'is_kuaizhuan': isKuaizhuan.toString(),
       'copy_amount': amount,
       'copy_name': name,
-      'copy_main': isKuaizhuan ? mobile : accountNumber,
+      'copy_main': mainValue,
     };
 
     final List<NotificationActionButton> buttons = [
       NotificationActionButton(
         key: 'copy_amount',
-        label: AppStrings.copyAmount.tr(),
+        label: '💰 ${AppStrings.copyAmount.tr()}',
         actionType: ActionType.KeepOnTop,
         autoDismissible: false,
       ),
       NotificationActionButton(
         key: 'copy_main',
         label: isKuaizhuan
-            ? AppStrings.copyPhone.tr()
-            : AppStrings.copyAccountNumber.tr(),
+            ? '📱 ${AppStrings.copyPhone.tr()}'
+            : '💳 ${AppStrings.copyAccountNumber.tr()}',
         actionType: ActionType.KeepOnTop,
         autoDismissible: false,
       ),
       NotificationActionButton(
-        key: 'copy_main',
-        label: AppStrings.success.tr(),
+        key: 'done',
+        label: '✅ ${AppStrings.success.tr()}',
         actionType: ActionType.Default,
-        autoDismissible: false,
+        autoDismissible: true,
       ),
     ];
 
@@ -240,25 +260,25 @@ class NotificationService {
       content: NotificationContent(
         id: orderNotificationId,
         channelKey: channelKey,
-        title: "${AppStrings.txIdLabel.tr()} $txId",
-        body: displayBody,
+        title: title,
+        body: body.toString(),
+        summary: summary,
         payload: payloadData,
         notificationLayout: NotificationLayout.BigText,
+        color: const Color(0xFF0066F6),
         locked: true,
         autoDismissible: false,
-        category: NotificationCategory.Service,
+        category: NotificationCategory.Message,
       ),
       actionButtons: buttons,
     );
 
-    _isOrderNotificationShowing = true;
-    debugPrint('【NotificationService】订单通知已生成');
+    debugPrint('【NotificationService】订单通知已生成 txId=$txId');
   }
 
   static Future<void> clearOrderNotification() async {
     try {
       await AwesomeNotifications().cancel(orderNotificationId);
-      _isOrderNotificationShowing = false;
       debugPrint('【NotificationService】订单通知已清除');
     } catch (e, s) {
       debugPrint("【NotificationService】clearOrderNotification error: $e");

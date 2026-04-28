@@ -1,0 +1,496 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#FFFFFF">
+
+    <!-- ── SCREEN 1: Order Details ─────────────────────────────────────────── -->
+    <ScrollView
+        android:id="@+id/layoutDetails"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#FFFFFF"
+        android:fillViewport="true"
+        android:visibility="visible">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="16dp">
+
+            <!-- Back to list button -->
+            <TextView
+                android:id="@+id/tvBackToList"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="← 訂單列表"
+                android:textColor="#0066F6"
+                android:textSize="13sp"
+                android:paddingTop="2dp"
+                android:paddingBottom="8dp"
+                android:visibility="visible"/>
+
+            <!-- Header: icon + TX ID + created at + type badge -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginBottom="12dp">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="交易編號"
+                        android:textColor="#999999"
+                        android:textSize="11sp"/>
+
+                    <TextView
+                        android:id="@+id/tvTxId"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="—"
+                        android:textColor="#1C1C1E"
+                        android:textSize="14sp"
+                        android:textStyle="bold"/>
+
+                    <TextView
+                        android:id="@+id/tvCreatedAt"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text=""
+                        android:textColor="#AAAAAA"
+                        android:textSize="10sp"
+                        android:layout_marginTop="2dp"/>
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/tvType"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="轉數快"
+                    android:textColor="#2DD4BF"
+                    android:textSize="11sp"
+                    android:textStyle="bold"
+                    android:background="#1A0D9488"
+                    android:paddingStart="8dp"
+                    android:paddingEnd="8dp"
+                    android:paddingTop="3dp"
+                    android:paddingBottom="3dp"/>
+            </LinearLayout>
+
+            <!-- Divider -->
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:background="#E5E5EA"
+                android:layout_marginBottom="12dp"/>
+
+            <!-- Countdown row -->
+            <LinearLayout
+                android:id="@+id/rowCountdown"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:background="#FFF5F5"
+                android:paddingStart="10dp"
+                android:paddingEnd="10dp"
+                android:paddingTop="8dp"
+                android:paddingBottom="8dp"
+                android:layout_marginBottom="10dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="⏱ 剩餘時間"
+                    android:textColor="#DC2626"
+                    android:textSize="12sp"/>
+
+                <View
+                    android:layout_width="0dp"
+                    android:layout_height="0dp"
+                    android:layout_weight="1"/>
+
+                <TextView
+                    android:id="@+id/tvCountdown"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="--:--"
+                    android:textColor="#DC2626"
+                    android:textSize="16sp"
+                    android:textStyle="bold"/>
+            </LinearLayout>
+
+            <!-- Amount (big) -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginBottom="10dp">
+
+                <TextView
+                    android:layout_width="80dp"
+                    android:layout_height="wrap_content"
+                    android:text="金額"
+                    android:textColor="#888888"
+                    android:textSize="12sp"/>
+
+                <TextView
+                    android:id="@+id/tvAmountCurrency"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="HKD"
+                    android:textColor="#888888"
+                    android:textSize="13sp"
+                    android:layout_marginEnd="4dp"
+                    android:layout_gravity="bottom"/>
+
+                <TextView
+                    android:id="@+id/tvAmount"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="0.00"
+                    android:textColor="#D97706"
+                    android:textSize="22sp"
+                    android:textStyle="bold"/>
+            </LinearLayout>
+
+            <!-- Name -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginBottom="8dp">
+
+                <TextView
+                    android:id="@+id/tvNameLabel"
+                    android:layout_width="80dp"
+                    android:layout_height="wrap_content"
+                    android:text="持卡人"
+                    android:textColor="#888888"
+                    android:textSize="12sp"/>
+
+                <TextView
+                    android:id="@+id/tvName"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="—"
+                    android:textColor="#1C1C1E"
+                    android:textSize="13sp"
+                    android:textStyle="bold"/>
+            </LinearLayout>
+
+            <!-- Account / Mobile -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginBottom="8dp">
+
+                <TextView
+                    android:id="@+id/tvMainLabel"
+                    android:layout_width="80dp"
+                    android:layout_height="wrap_content"
+                    android:text="帳號"
+                    android:textColor="#888888"
+                    android:textSize="12sp"/>
+
+                <TextView
+                    android:id="@+id/tvMain"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="—"
+                    android:textColor="#1C1C1E"
+                    android:textSize="13sp"
+                    android:textStyle="bold"/>
+            </LinearLayout>
+
+            <!-- Bank Name (shown only for bank transfer) -->
+            <LinearLayout
+                android:id="@+id/rowBankName"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginBottom="8dp"
+                android:visibility="gone">
+
+                <TextView
+                    android:layout_width="80dp"
+                    android:layout_height="wrap_content"
+                    android:text="銀行"
+                    android:textColor="#888888"
+                    android:textSize="12sp"/>
+
+                <TextView
+                    android:id="@+id/tvBankName"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="—"
+                    android:textColor="#1C1C1E"
+                    android:textSize="13sp"
+                    android:textStyle="bold"/>
+            </LinearLayout>
+
+            <!-- Divider -->
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:background="#E5E5EA"
+                android:layout_marginBottom="14dp"/>
+
+            <!-- Copy Buttons Row -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
+
+                <Button
+                    android:id="@+id/btnCopyAmount"
+                    android:layout_width="0dp"
+                    android:layout_height="44dp"
+                    android:layout_weight="1"
+                    android:text="复制金額"
+                    android:textColor="#D97706"
+                    android:textSize="13sp"
+                    android:textStyle="bold"
+                    android:background="#1AFBBF24"
+                    android:layout_marginEnd="8dp"/>
+
+                <Button
+                    android:id="@+id/btnCopyMain"
+                    android:layout_width="0dp"
+                    android:layout_height="44dp"
+                    android:layout_weight="1"
+                    android:text="复制帳號"
+                    android:textColor="#0066F6"
+                    android:textSize="13sp"
+                    android:textStyle="bold"
+                    android:background="#140066F6"/>
+
+            </LinearLayout>
+
+            <!-- Bank Name copy button (shown only for bank transfer) -->
+            <Button
+                android:id="@+id/btnCopyBankName"
+                android:layout_width="match_parent"
+                android:layout_height="44dp"
+                android:text="複製銀行名稱"
+                android:textColor="#6D28D9"
+                android:textSize="13sp"
+                android:textStyle="bold"
+                android:background="#140066F6"
+                android:layout_marginTop="8dp"
+                android:visibility="gone"/>
+
+            <!-- Copied status text -->
+            <TextView
+                android:id="@+id/tvCopiedStatus"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text=""
+                android:textColor="#16A34A"
+                android:textSize="12sp"
+                android:gravity="center"
+                android:layout_marginTop="10dp"
+                android:visibility="gone"/>
+
+            <!-- Divider before action buttons -->
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:background="#E5E5EA"
+                android:layout_marginTop="14dp"
+                android:layout_marginBottom="14dp"/>
+
+            <!-- Action Buttons Row -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
+
+                <Button
+                    android:id="@+id/btnIncomplete"
+                    android:layout_width="0dp"
+                    android:layout_height="44dp"
+                    android:layout_weight="1"
+                    android:text="有問題"
+                    android:textColor="#DC2626"
+                    android:textSize="13sp"
+                    android:textStyle="bold"
+                    android:background="#14FF453A"
+                    android:layout_marginEnd="8dp"/>
+
+                <Button
+                    android:id="@+id/btnComplete"
+                    android:layout_width="0dp"
+                    android:layout_height="44dp"
+                    android:layout_weight="1"
+                    android:text="完成"
+                    android:textColor="#16A34A"
+                    android:textSize="13sp"
+                    android:textStyle="bold"
+                    android:background="#1430D158"/>
+
+            </LinearLayout>
+
+        </LinearLayout>
+    </ScrollView>
+
+    <!-- ── SCREEN 2: Order List ────────────────────────────────────────────── -->
+    <LinearLayout
+        android:id="@+id/layoutList"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:background="#FFFFFF"
+        android:visibility="gone">
+
+        <!-- List header -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:background="#FFFFFF"
+            android:padding="16dp">
+
+            <ImageView
+                android:layout_width="28dp"
+                android:layout_height="28dp"
+                android:src="@mipmap/ic_launcher"
+                android:background="#220066F6"
+                android:padding="4dp"/>
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="10dp"
+                android:text="選擇訂單"
+                android:textColor="#1C1C1E"
+                android:textSize="15sp"
+                android:textStyle="bold"/>
+
+            <TextView
+                android:id="@+id/tvListRefresh"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="↻ 刷新"
+                android:textColor="#0066F6"
+                android:textSize="13sp"
+                android:layout_marginEnd="8dp"/>
+
+            <TextView
+                android:id="@+id/tvListLoading"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="載入中..."
+                android:textColor="#999999"
+                android:textSize="12sp"
+                android:visibility="gone"/>
+
+        </LinearLayout>
+
+        <!-- Divider -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="#E5E5EA"/>
+
+        <!-- List items container -->
+        <ScrollView
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1">
+
+            <LinearLayout
+                android:id="@+id/listContainer"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:paddingTop="8dp"
+                android:paddingBottom="8dp"/>
+
+        </ScrollView>
+
+        <!-- Empty state -->
+        <TextView
+            android:id="@+id/tvListEmpty"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:text="暫無待處理訂單"
+            android:textColor="#AAAAAA"
+            android:textSize="13sp"
+            android:visibility="gone"/>
+
+    </LinearLayout>
+
+    <!-- ── SCREEN 3: Session expired (redirects to Flutter login) ───────────── -->
+    <ScrollView
+        android:id="@+id/layoutLogin"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#FFFFFF"
+        android:fillViewport="true"
+        android:visibility="gone">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="24dp"
+            android:gravity="center_horizontal">
+
+            <ImageView
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:src="@mipmap/ic_launcher"
+                android:layout_marginTop="48dp"
+                android:layout_marginBottom="24dp"/>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="登入已過期"
+                android:textColor="#DC2626"
+                android:textSize="13sp"
+                android:layout_marginBottom="8dp"/>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="請返回應用程式重新登入"
+                android:textColor="#555555"
+                android:textSize="14sp"
+                android:gravity="center"
+                android:layout_marginBottom="40dp"/>
+
+            <Button
+                android:id="@+id/btnOpenFlutter"
+                android:layout_width="match_parent"
+                android:layout_height="50dp"
+                android:text="重新登入"
+                android:textColor="#FFFFFF"
+                android:textSize="15sp"
+                android:textStyle="bold"
+                android:background="#0066F6"/>
+
+        </LinearLayout>
+    </ScrollView>
+
+</FrameLayout>
