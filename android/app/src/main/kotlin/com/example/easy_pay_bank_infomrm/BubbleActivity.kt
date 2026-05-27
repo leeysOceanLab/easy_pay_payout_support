@@ -64,7 +64,7 @@ class BubbleActivity : Activity() {
 
     private val handler = Handler(Looper.getMainLooper())
     private lateinit var prefs: android.content.SharedPreferences
-    private var apiBaseUrl: String = "https://easypayonline.org/api"
+    private var apiBaseUrl: String = "https://ezchoya.com/api"
 
     private var withdrawalId: Int = 0
     private var isKuaizhuan: Boolean = false
@@ -141,8 +141,8 @@ class BubbleActivity : Activity() {
 
         prefs = getSharedPreferences("FlutterSharedPreferences", MODE_PRIVATE)
         apiBaseUrl = prefs.getString(
-            "flutter.api_base_url", "https://easypayonline.org/api"
-        ) ?: "https://easypayonline.org/api"
+            "flutter.api_base_url", "https://ezchoya.com/api"
+        ) ?: "https://ezchoya.com/api"
 
         lastActivityMs = System.currentTimeMillis()
         bindViews()

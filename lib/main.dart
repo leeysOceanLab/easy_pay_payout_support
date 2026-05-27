@@ -51,8 +51,8 @@ Future<void> main() async {
   const config = AppConfig(
     flavor: AppFlavor.staging,
     appName: 'EZ Pay Staging',
-    apiBaseUrl: 'https://staging.easypayonline.org/api',
-    apiTrialBaseUrl: 'https://staging.easypayonline.org/api',
+    apiBaseUrl: 'https://staging.ezchoya.com/api',
+    apiTrialBaseUrl: 'https://staging.ezchoya.com/api',
     logoAsset: 'assets/icon/ez_pay_square.png',
   );
 

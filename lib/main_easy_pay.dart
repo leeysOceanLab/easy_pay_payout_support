@@ -6,8 +6,8 @@ Future<void> main() async {
   const config = AppConfig(
     flavor: AppFlavor.easyPay,
     appName: 'EasyPay 辅助系统',
-    apiBaseUrl: 'https://easypayonline.org/api',
-    apiTrialBaseUrl: 'https://staging.easypayonline.org/api',
+    apiBaseUrl: 'https://ezchoya.com/api',
+    apiTrialBaseUrl: 'https://staging.ezchoya.com/api',
     logoAsset: 'assets/easy_pay/icon.png',
   );
 

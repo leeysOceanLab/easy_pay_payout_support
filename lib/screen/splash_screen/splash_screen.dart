@@ -69,24 +69,20 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   Future<bool> loginWithToken(String token) async {
+    bool result = false;
     try {
       await ApiService.api.myLockedWithdrawal(
         onSuccess: (response) {
-          if (response.status == kSuccess) {
-            return true;
-          } else {
-            return false;
-          }
+          result = response.status == kSuccess;
         },
         onError: (error) {
-          return false;
+          result = false;
         },
       );
-
-      return true;
     } catch (e) {
-      return false;
+      result = false;
     }
+    return result;
   }
 
   void goToLoginScreen() {

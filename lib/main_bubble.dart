@@ -20,7 +20,7 @@ Future<void> mainBubble(List<String> args) async {
   final int withdrawalId = int.tryParse(args.isNotEmpty ? args[0] : '0') ?? 0;
   final String apiBaseUrl = args.length > 1 && args[1].isNotEmpty
       ? args[1]
-      : 'https://easypayonline.org/api';
+      : 'https://ezchoya.com/api';
 
   AppConfig.instance = AppConfig(
     flavor: AppFlavor.easyPay,
