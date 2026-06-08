@@ -136,6 +136,16 @@ class MainController with ChangeNotifier {
       apiBaseUrl: AppConfig.instance.apiBaseUrl,
     );
 
+    await AppNavigator.pushNamed(
+      context,
+      RouteName.withdrawalDetails,
+      arguments: {
+        "id": d.id ?? 0,
+        "details": d,
+        "lockedByMe": lockedByMe ?? true,
+      },
+    );
+
     onRefresh();
   }
 

@@ -30,7 +30,6 @@ class _WithdrawalDetailsScreenState extends State<WithdrawalDetailsScreen> {
   @override
   void initState() {
     super.initState();
-    BubbleService.dismissAll();
     _withdrawalDetailsController = WithdrawalDetailsController()
       ..setInit(
         widget.id,
@@ -631,112 +630,10 @@ class _WithdrawalDetailsScreenState extends State<WithdrawalDetailsScreen> {
       return;
     }
 
-    final String nextOrderId = nextWithdrawal.txId ?? "-";
-
-    String typeText = nextWithdrawal.type ?? "-";
-    if (typeText.toLowerCase() == "kuaizhuan") {
-      typeText = context.tr(AppStrings.fastTransfer);
-    } else if (typeText.toLowerCase() == "bank" ||
-        typeText.toLowerCase() == "bank_transfer") {
-      typeText = context.tr(AppStrings.bankTransfer);
-    }
-
-    final String successText = context.tr(AppStrings.success);
-    final String confirmedText = context.tr(
-      AppStrings.withdrawalConfirmedSuccessfully,
-    );
-    final String nextOrderText = context.tr(AppStrings.nextOrder);
-    final String amountText = context.tr(AppStrings.amount);
-    final String hkdText = context.tr(AppStrings.hkd);
-    final String merchantText = context.tr(AppStrings.merchant);
-    final String typeLabelText = context.tr(AppStrings.type);
-    final String endText = context.tr(AppStrings.end);
-    final String nextOneText = context.tr(AppStrings.nextOne);
-
-    final String? action = await showDialog<String>(
-      context: context,
-      barrierDismissible: false,
-      builder: (dialogContext) {
-        return AlertDialog(
-          title: AppText(
-            successText,
-            fontSize: 18,
-            fontWeight: FontWeight.w700,
-            color: AppColors.primaryTextColor,
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              AppText(
-                confirmedText,
-                fontSize: 14,
-                color: AppColors.primaryTextColor,
-              ),
-              10.heightSpace,
-              AppText(
-                "$nextOrderText: $nextOrderId",
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: AppColors.primaryTextColor,
-              ),
-              10.heightSpace,
-              AppText(
-                "$amountText: $hkdText ${nextWithdrawal.withdrawAmount}",
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: AppColors.primaryTextColor,
-              ),
-              6.heightSpace,
-
-              AppText(
-                "$typeLabelText: $typeText",
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: AppColors.primaryTextColor,
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(dialogContext).pop("end");
-              },
-              child: AppText(
-                endText,
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: AppColors.redColor,
-              ),
-            ),
-            TextButton(
-              onPressed: () {
-                Navigator.of(dialogContext).pop("next");
-              },
-              child: AppText(
-                nextOneText,
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-                color: AppColors.completedButtonColor,
-              ),
-            ),
-          ],
-        );
-      },
-    );
+    await controller.releaseWithdrawal(nextWithdrawal.id);
 
     if (!context.mounted) return;
-
-    // continue your action handling here
-    if (action == "end") {
-      await controller.releaseWithdrawal(nextWithdrawal.id);
-      AppNavigator.pop(context);
-      return;
-    }
-
-    if (action == "next") {
-      controller.getMyLockedWithdrawal(nextWithdrawal.id ?? 0);
-    }
+    AppNavigator.pop(context);
   }
 
   String _displayValue(String? value) {

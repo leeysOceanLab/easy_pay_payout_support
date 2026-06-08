@@ -148,8 +148,9 @@ class LoginController extends ChangeNotifier {
           AppNavigator.pushNamedAndRemoveUntil(context, RouteName.mainPage);
         },
         onError: (error) {
-          print("Login response Login error: $error");
           Loader.hide();
+          twoFaTextController.clear();
+          twoFaFocusNode.requestFocus();
         },
       );
     } catch (e) {
