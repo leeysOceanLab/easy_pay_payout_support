@@ -9,6 +9,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.graphics.Color
+import android.graphics.drawable.ColorDrawable
 import android.net.Uri
 import android.widget.ImageView
 import android.os.Build
@@ -111,6 +112,7 @@ class BubbleActivity : Activity() {
 
     private var isUploadingReceipt = false
     private var listAutoRefreshRunnable: Runnable? = null
+    private var loadingDialog: AlertDialog? = null
 
     // Generation counter — prevents stale fetch results from rendering after a newer refresh
     private var listGeneration = 0
@@ -163,6 +165,8 @@ class BubbleActivity : Activity() {
         unregisterReceiver(updateReceiver)
         stopCountdown()
         stopListAutoRefresh()
+        loadingDialog?.dismiss()
+        loadingDialog = null
         handler.removeCallbacksAndMessages(null)
         super.onDestroy()
     }
@@ -450,6 +454,7 @@ class BubbleActivity : Activity() {
             readTimeout    = 10_000
         }
         val code = conn.responseCode
+        if (code == 401) { conn.disconnect(); on401(); return PendingResult(emptyList(), emptyList(), page) }
         if (code !in 200..299) { conn.disconnect(); return PendingResult(emptyList(), emptyList(), page) }
         val body = BufferedReader(InputStreamReader(conn.inputStream)).readText()
         conn.disconnect()
@@ -474,6 +479,7 @@ class BubbleActivity : Activity() {
             readTimeout    = 10_000
         }
         val code = conn.responseCode
+        if (code == 401) { conn.disconnect(); on401(); return null }
         if (code !in 200..299) { conn.disconnect(); return null }
         val body = BufferedReader(InputStreamReader(conn.inputStream)).readText()
         conn.disconnect()
@@ -787,6 +793,7 @@ class BubbleActivity : Activity() {
                 }
                 OutputStreamWriter(conn.outputStream).use { it.write("{}") }
                 val code = conn.responseCode
+                if (code == 401) { on401(); return@runCatching false }
                 if (code !in 200..299) { return@runCatching false }
                 val body = BufferedReader(InputStreamReader(conn.inputStream)).readText()
                 conn.disconnect()
@@ -1004,6 +1011,61 @@ class BubbleActivity : Activity() {
         if (withdrawalId > 0 && token.isNotEmpty()) callCopyLogApi(label, token)
     }
 
+    // ── 401 handler ───────────────────────────────────────────────────────────
+
+    /** Called from any thread when the server returns 401. */
+    private fun on401() {
+        handler.post { if (!isFinishing) showLoginScreen() }
+    }
+
+    // ── Loading progress ──────────────────────────────────────────────────────
+
+    private fun showLoadingProgress(message: String = "上傳中...") {
+        if (isFinishing) return
+        loadingDialog?.dismiss()
+        val layout = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = android.view.Gravity.CENTER
+            setBackgroundColor(android.graphics.Color.WHITE)
+            setPadding(dp(36), dp(32), dp(36), dp(28))
+        }
+        val spinner = android.widget.ProgressBar(this).apply {
+            layoutParams = LinearLayout.LayoutParams(dp(44), dp(44)).also {
+                it.gravity = android.view.Gravity.CENTER_HORIZONTAL
+            }
+            isIndeterminate = true
+        }
+        val tv = TextView(this).apply {
+            text = message
+            textSize = 14f
+            gravity = android.view.Gravity.CENTER
+            setTextColor(android.graphics.Color.parseColor("#1C1C1E"))
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ).also { it.topMargin = dp(14) }
+        }
+        layout.addView(spinner)
+        layout.addView(tv)
+        loadingDialog = AlertDialog.Builder(this)
+            .setView(layout)
+            .setCancelable(false)
+            .create()
+        loadingDialog?.show()
+        loadingDialog?.window?.apply {
+            setLayout(
+                android.view.WindowManager.LayoutParams.WRAP_CONTENT,
+                android.view.WindowManager.LayoutParams.WRAP_CONTENT,
+            )
+            setBackgroundDrawable(ColorDrawable(Color.WHITE))
+        }
+    }
+
+    private fun dismissLoadingProgress() {
+        loadingDialog?.dismiss()
+        loadingDialog = null
+    }
+
     // ── API calls ──────────────────────────────────────────────────────────────
 
     private fun callCopyLogApi(fieldName: String, token: String) {
@@ -1044,6 +1106,7 @@ class BubbleActivity : Activity() {
                 OutputStreamWriter(conn.outputStream).use { it.write("{}") }
                 val code = conn.responseCode
                 conn.disconnect()
+                if (code == 401) { on401(); return@runCatching false }
                 code in 200..299
             }.getOrDefault(false)
             handler.post { onResult(success) }
@@ -1176,10 +1239,10 @@ class BubbleActivity : Activity() {
             return
         }
         btnComplete.isEnabled = false
-        tvDetailStatus.setTextColor(android.graphics.Color.parseColor("#6B7280"))
-        tvDetailStatus.text = "上傳中..."
-        tvDetailStatus.visibility = View.VISIBLE
+        tvDetailStatus.visibility = View.GONE
+        showLoadingProgress("上傳中...")
         callConfirmApiDetail(id, token, files) { result ->
+            dismissLoadingProgress()
             btnComplete.isEnabled = !isExpired
             if (!result.success) {
                 tvDetailStatus.setTextColor(android.graphics.Color.parseColor("#DC2626"))
@@ -1253,6 +1316,7 @@ class BubbleActivity : Activity() {
                 }
 
                 val code = conn.responseCode
+                if (code == 401) { conn.disconnect(); on401(); return@runCatching ConfirmResult(false, errorMessage = "登入已過期，請重新登入") }
                 if (code !in 200..299) {
                     val errBody = runCatching {
                         BufferedReader(InputStreamReader(conn.errorStream)).readText()
@@ -1349,6 +1413,7 @@ class BubbleActivity : Activity() {
                 }
                 OutputStreamWriter(conn.outputStream).use { it.write("{}") }
                 val code = conn.responseCode
+                if (code == 401) { on401(); return@runCatching false }
                 if (code !in 200..299) { return@runCatching false }
                 val body = BufferedReader(InputStreamReader(conn.inputStream)).readText()
                 conn.disconnect()
