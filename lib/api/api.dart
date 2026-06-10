@@ -194,20 +194,19 @@ class Api {
     required Function(ApiResponseModel) onSuccess,
     bool showLoader = false,
     Function(String)? onError,
+    XFile? proofFile,
   }) async {
-    await HttpClientCustom.httpPost(
+    await HttpClientCustom.httpPostWithFile(
       showLoader: showLoader,
       apiUrl: apiUrl,
       endPoint: "/admin-withdraw/withdrawals/${id.toString()}/confirm",
       withBearer: true,
-      params: {},
+      fileKey: proofFile != null ? "proof" : null,
+      file: proofFile,
       onSuccess: onSuccess,
       onError: (error) {
         ToastHelper.showToast(error);
-
-        if (onError != null) {
-          onError(error);
-        }
+        if (onError != null) onError(error);
       },
     );
   }

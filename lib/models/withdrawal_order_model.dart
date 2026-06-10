@@ -14,6 +14,8 @@ class WithdrawalOrderModel {
   final String? accountNumber;
   final String? holderName;
   final String? mobileNo;
+  final bool isPriority;
+  final int? priorityValue;
 
   WithdrawalOrderModel({
     this.id,
@@ -31,6 +33,8 @@ class WithdrawalOrderModel {
     this.accountNumber,
     this.holderName,
     this.mobileNo,
+    this.isPriority = false,
+    this.priorityValue,
   });
 
   factory WithdrawalOrderModel.fromJson(Map<String, dynamic> json) {
@@ -50,6 +54,8 @@ class WithdrawalOrderModel {
       accountNumber: json["account_number"]?.toString(),
       holderName: json["holder_name"]?.toString(),
       mobileNo: json["mobile_no"]?.toString(),
+      isPriority: json["is_priority"] == 1 || json["is_priority"] == true,
+      priorityValue: json["priority_value"] as int?,
     );
   }
 

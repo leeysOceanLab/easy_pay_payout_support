@@ -129,6 +129,78 @@ class HttpClientCustom {
     }
   }
 
+  /// POST with a single file under a named key (multipart if file provided, JSON otherwise)
+  static Future<void> httpPostWithFile({
+    required String? apiUrl,
+    required String? endPoint,
+    required Function(ApiResponseModel) onSuccess,
+    Map<String, dynamic>? params,
+    String? fileKey,
+    XFile? file,
+    String? customUrl,
+    bool withBearer = false,
+    String? tempToken,
+    Function(String)? onError,
+    bool showLoader = false,
+  }) async {
+    if (showLoader) Loader.show();
+
+    try {
+      final String? token = tempToken ?? await ApiService.getApiToken();
+      final String url = customUrl ?? "$apiUrl$endPoint";
+      final String lang = NavigationService.context.locale.languageCode;
+
+      Response response;
+
+      if (file != null && fileKey != null) {
+        final formData = FormData();
+        formData.fields.add(MapEntry("language", lang));
+        params?.forEach((k, v) => formData.fields.add(MapEntry(k, v.toString())));
+        formData.files.add(MapEntry(
+          fileKey,
+          await MultipartFile.fromFile(file.path, filename: file.name),
+        ));
+        response = await _dio.post(
+          url,
+          data: formData,
+          options: Options(
+            headers: {
+              "Accept": "application/json",
+              if (withBearer) "Authorization": "Bearer $token",
+            },
+            validateStatus: (_) => true,
+          ),
+        );
+      } else {
+        final body = <String, dynamic>{...(params ?? {}), "language": lang};
+        response = await _dio.post(
+          url,
+          data: body,
+          options: Options(
+            headers: {
+              "Accept": "application/json",
+              if (withBearer) "Authorization": "Bearer $token",
+            },
+            validateStatus: (_) => true,
+          ),
+        );
+      }
+
+      HttpServiceCustom.responseHandler(
+        response: response,
+        onSuccess: onSuccess,
+        onError: onError,
+        hideLoader: showLoader,
+      );
+    } on DioException catch (e) {
+      Loader.hide();
+      ToastHelper.showToast(e.message ?? "Something went wrong");
+    } catch (e) {
+      Loader.hide();
+      ToastHelper.showToast("$e");
+    }
+  }
+
   /// Multipart POST method
   static Future<void> multipartPost({
     required String? apiUrl,

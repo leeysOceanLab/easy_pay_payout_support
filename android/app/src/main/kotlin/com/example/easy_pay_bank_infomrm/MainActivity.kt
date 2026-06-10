@@ -93,14 +93,6 @@ class MainActivity : FlutterActivity() {
                     BubbleNotificationHelper.dismissAll(applicationContext)
                     result.success(null)
                 }
-                "notifyBubbleLogout" -> {
-                    // Clear stored token so bubble can't make API calls after logout
-                    getSharedPreferences("FlutterSharedPreferences", MODE_PRIVATE)
-                        .edit().putString("flutter.bubble_token", "").apply()
-                    // Tell BubbleActivity to show login screen
-                    sendBroadcast(Intent("com.example.easy_pay_bank_infomrm.BUBBLE_LOGOUT"))
-                    result.success(null)
-                }
                 "checkBubblePermission" -> {
                     val allowed = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                         val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
@@ -133,15 +125,6 @@ class MainActivity : FlutterActivity() {
                 }
                 else -> result.notImplemented()
             }
-        }
-    }
-
-    override fun onResume() {
-        super.onResume()
-        val prefs = getSharedPreferences("FlutterSharedPreferences", MODE_PRIVATE)
-        if (prefs.getBoolean("flutter.bubble_requests_login", false)) {
-            prefs.edit().putBoolean("flutter.bubble_requests_login", false).apply()
-            bubbleChannel?.invokeMethod("onBubbleOpenLogin", null)
         }
     }
 

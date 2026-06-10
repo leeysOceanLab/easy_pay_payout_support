@@ -2,8 +2,6 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import '../../api/api_service.dart';
-import '../../routes/route_name.dart';
-import '../../services/navigation_service.dart';
 
 /// Flutter-side wrapper for the Android Bubble MethodChannel.
 /// On non-Android platforms this is a no-op.
@@ -23,22 +21,8 @@ class BubbleService {
             await ApiService.updateApiToken(token);
           }
           break;
-        case 'onBubbleOpenLogin':
-          await ApiService.deleteApiToken();
-          NavigationService.navigatorKey.currentState
-              ?.pushNamedAndRemoveUntil(RouteName.loginPage, (_) => false);
-          break;
       }
     });
-  }
-
-  static Future<void> notifyLogout() async {
-    if (!Platform.isAndroid) return;
-    try {
-      await _channel.invokeMethod('notifyBubbleLogout');
-    } catch (e) {
-      debugPrint('【BubbleService】notifyLogout error: $e');
-    }
   }
 
   static Future<void> showBubble({

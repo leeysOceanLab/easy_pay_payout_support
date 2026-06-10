@@ -2,7 +2,7 @@
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#FFFFFF">
+    android:background="@android:color/transparent">
 
     <!-- ── SCREEN 1: Order Details ─────────────────────────────────────────── -->
     <ScrollView
@@ -27,6 +27,7 @@
                 android:text="← 訂單列表"
                 android:textColor="#0066F6"
                 android:textSize="13sp"
+                android:textStyle="bold"
                 android:paddingTop="2dp"
                 android:paddingBottom="8dp"
                 android:visibility="visible"/>
@@ -50,7 +51,8 @@
                         android:layout_height="wrap_content"
                         android:text="交易編號"
                         android:textColor="#999999"
-                        android:textSize="11sp"/>
+                        android:textSize="11sp"
+                        android:textStyle="bold"/>
 
                     <TextView
                         android:id="@+id/tvTxId"
@@ -79,7 +81,7 @@
                     android:textColor="#2DD4BF"
                     android:textSize="11sp"
                     android:textStyle="bold"
-                    android:background="#1A0D9488"
+                    android:background="#660D9488"
                     android:paddingStart="8dp"
                     android:paddingEnd="8dp"
                     android:paddingTop="3dp"
@@ -112,7 +114,8 @@
                     android:layout_height="wrap_content"
                     android:text="⏱ 剩餘時間"
                     android:textColor="#DC2626"
-                    android:textSize="12sp"/>
+                    android:textSize="12sp"
+                    android:textStyle="bold"/>
 
                 <View
                     android:layout_width="0dp"
@@ -142,7 +145,8 @@
                     android:layout_height="wrap_content"
                     android:text="金額"
                     android:textColor="#888888"
-                    android:textSize="12sp"/>
+                    android:textSize="12sp"
+                    android:textStyle="bold"/>
 
                 <TextView
                     android:id="@+id/tvAmountCurrency"
@@ -151,6 +155,7 @@
                     android:text="HKD"
                     android:textColor="#888888"
                     android:textSize="13sp"
+                    android:textStyle="bold"
                     android:layout_marginEnd="4dp"
                     android:layout_gravity="bottom"/>
 
@@ -178,7 +183,8 @@
                     android:layout_height="wrap_content"
                     android:text="持卡人"
                     android:textColor="#888888"
-                    android:textSize="12sp"/>
+                    android:textSize="12sp"
+                    android:textStyle="bold"/>
 
                 <TextView
                     android:id="@+id/tvName"
@@ -204,7 +210,8 @@
                     android:layout_height="wrap_content"
                     android:text="帳號"
                     android:textColor="#888888"
-                    android:textSize="12sp"/>
+                    android:textSize="12sp"
+                    android:textStyle="bold"/>
 
                 <TextView
                     android:id="@+id/tvMain"
@@ -231,7 +238,8 @@
                     android:layout_height="wrap_content"
                     android:text="銀行"
                     android:textColor="#888888"
-                    android:textSize="12sp"/>
+                    android:textSize="12sp"
+                    android:textStyle="bold"/>
 
                 <TextView
                     android:id="@+id/tvBankName"
@@ -263,10 +271,10 @@
                     android:layout_height="44dp"
                     android:layout_weight="1"
                     android:text="复制金額"
-                    android:textColor="#D97706"
+                    android:textColor="#1C1C1E"
                     android:textSize="13sp"
                     android:textStyle="bold"
-                    android:background="#1AFBBF24"
+                    android:background="#66333333"
                     android:layout_marginEnd="8dp"/>
 
                 <Button
@@ -275,12 +283,24 @@
                     android:layout_height="44dp"
                     android:layout_weight="1"
                     android:text="复制帳號"
-                    android:textColor="#0066F6"
+                    android:textColor="#1C1C1E"
                     android:textSize="13sp"
                     android:textStyle="bold"
-                    android:background="#140066F6"/>
+                    android:background="#66333333"/>
 
             </LinearLayout>
+
+            <!-- Copy Name Button -->
+            <Button
+                android:id="@+id/btnCopyName"
+                android:layout_width="match_parent"
+                android:layout_height="44dp"
+                android:text="複製名稱"
+                android:textColor="#1C1C1E"
+                android:textSize="13sp"
+                android:textStyle="bold"
+                android:background="#66333333"
+                android:layout_marginTop="8dp"/>
 
             <!-- Bank Name copy button (shown only for bank transfer) -->
             <Button
@@ -288,10 +308,10 @@
                 android:layout_width="match_parent"
                 android:layout_height="44dp"
                 android:text="複製銀行名稱"
-                android:textColor="#6D28D9"
+                android:textColor="#1C1C1E"
                 android:textSize="13sp"
                 android:textStyle="bold"
-                android:background="#140066F6"
+                android:background="#66333333"
                 android:layout_marginTop="8dp"
                 android:visibility="gone"/>
 
@@ -313,7 +333,18 @@
                 android:layout_height="1dp"
                 android:background="#E5E5EA"
                 android:layout_marginTop="14dp"
-                android:layout_marginBottom="14dp"/>
+                android:layout_marginBottom="8dp"/>
+
+            <!-- Upload loading / error status -->
+            <TextView
+                android:id="@+id/tvDetailStatus"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text=""
+                android:textSize="12sp"
+                android:gravity="center"
+                android:layout_marginBottom="8dp"
+                android:visibility="gone"/>
 
             <!-- Action Buttons Row -->
             <LinearLayout
@@ -330,7 +361,7 @@
                     android:textColor="#DC2626"
                     android:textSize="13sp"
                     android:textStyle="bold"
-                    android:background="#14FF453A"
+                    android:background="#66FF453A"
                     android:layout_marginEnd="8dp"/>
 
                 <Button
@@ -342,7 +373,7 @@
                     android:textColor="#16A34A"
                     android:textSize="13sp"
                     android:textStyle="bold"
-                    android:background="#1430D158"/>
+                    android:background="#6630D158"/>
 
             </LinearLayout>
 
@@ -364,7 +395,7 @@
             android:layout_height="wrap_content"
             android:orientation="horizontal"
             android:gravity="center_vertical"
-            android:background="#FFFFFF"
+            android:background="@android:color/transparent"
             android:padding="16dp">
 
             <ImageView

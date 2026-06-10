@@ -9,9 +9,11 @@ class MainController with ChangeNotifier {
 
   final RefreshController refreshController = RefreshController();
   bool isLoading = true;
+  bool _isFetchingList = false;
   TextEditingController searchTextController = TextEditingController();
   FocusNode searchFocusNode = FocusNode();
   dynamic filters = {};
+  List<WithdrawalOrderModel> priorityList = [];
   List<WithdrawalOrderModel> withdrawalList = [];
   WithdrawalDetailsModel withdrawalDetails = WithdrawalDetailsModel();
   int page = 1;
@@ -37,20 +39,25 @@ class MainController with ChangeNotifier {
   }
 
   void onRefresh() async {
+    if (_isFetchingList) { refreshController.refreshCompleted(); return; }
+    _isFetchingList = true;
     isLoading = true;
     page = 1;
+    priorityList = [];
     withdrawalList = [];
     update();
-    // await getMyLockedWithdrawal();
     await getWithdrawalList();
     refreshController.refreshCompleted();
     isLoading = false;
+    _isFetchingList = false;
     update();
   }
 
   void onLoading() async {
+    if (_isFetchingList) { refreshController.loadComplete(); return; }
+    _isFetchingList = true;
     await getWithdrawalList();
-    // filterBookings(_selectedStatus, context);
+    _isFetchingList = false;
     update();
   }
 
@@ -164,11 +171,26 @@ class MainController with ChangeNotifier {
     await ApiService.api.getWithdrawalsList(
       page: page,
       onSuccess: (response) {
-        withdrawalList.addAll(
-          List.from(
-            response.data['withdrawals'],
-          ).map((element) => WithdrawalOrderModel.fromJson(element)).toList(),
-        );
+        if (page == 1) {
+          final rawPriority = response.data['priority'];
+          if (rawPriority is List) {
+            priorityList = rawPriority
+                .map((e) => WithdrawalOrderModel.fromJson(Map<String, dynamic>.from(e)))
+                .toList()
+              ..sort((a, b) => (a.priorityValue ?? 0).compareTo(b.priorityValue ?? 0));
+          }
+        }
+
+        final priorityIds = priorityList.map((e) => e.id).toSet();
+        final rawWithdrawals = response.data['withdrawals'];
+        if (rawWithdrawals is List) {
+          withdrawalList.addAll(
+            rawWithdrawals
+                .map((e) => WithdrawalOrderModel.fromJson(Map<String, dynamic>.from(e)))
+                .where((e) => !priorityIds.contains(e.id))
+                .toList(),
+          );
+        }
 
         int lastPage = response.data['pagination']['last_page'];
         if (page < lastPage) {

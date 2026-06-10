@@ -129,6 +129,7 @@ class WithdrawalDetailsController with ChangeNotifier {
     int id, {
     bool showLoader = true,
     bool resetExpiredState = true,
+    bool popOnError = true,
   }) async {
     if (showLoader) {
       await Loader.show();
@@ -161,7 +162,7 @@ class WithdrawalDetailsController with ChangeNotifier {
           ToastHelper.showToast(error);
           isSuccess = false;
 
-          AppNavigator.pop(context);
+          if (popOnError) AppNavigator.pop(context);
         },
       );
     } catch (e) {
@@ -323,6 +324,9 @@ class WithdrawalDetailsController with ChangeNotifier {
     if (isCheckingExpiredStatus || hasCheckedExpiredStatus) return;
     if (withdrawalId == null) return;
 
+    // Capture translations before any async gaps
+    final String takenByOtherMsg = context.tr(AppStrings.withdrawalTakenByOther);
+
     isCheckingExpiredStatus = true;
     hasCheckedExpiredStatus = true;
     isExpired = true;
@@ -386,6 +390,7 @@ class WithdrawalDetailsController with ChangeNotifier {
           withdrawalId!,
           showLoader: true,
           resetExpiredState: true,
+          popOnError: false,
         );
 
         if (!isSuccess) {
@@ -393,24 +398,18 @@ class WithdrawalDetailsController with ChangeNotifier {
           isExpired = true;
           update();
 
-          ToastHelper.showToast(context.tr(AppStrings.withdrawalTakenByOther));
+          ToastHelper.showToast(takenByOtherMsg);
 
           await Future.delayed(const Duration(milliseconds: 300));
 
-          final currentContext = NavigationService.navigatorKey.currentContext;
-          if (currentContext != null) {
-            Navigator.of(currentContext).pop();
-          }
+          if (context.mounted) AppNavigator.pop(context);
         } else {
           await getCopyLogListById(showLoader: false);
         }
       } else {
-        await releaseWithdrawal(null);
-
-        final currentContext = NavigationService.navigatorKey.currentContext;
-        if (currentContext != null) {
-          Navigator.of(currentContext).pop();
-        }
+        // "Back to list" or dialog dismissed — order lock already expired on
+        // server, skip the release API call to avoid spurious auth error toasts
+        if (context.mounted) AppNavigator.pop(context);
       }
     } catch (e) {
       printLog("_handleExpired error: $e");
@@ -418,14 +417,10 @@ class WithdrawalDetailsController with ChangeNotifier {
       isExpired = true;
       update();
 
-      final BuildContext? context =
-          NavigationService.navigatorKey.currentContext;
-      if (context != null) {
-        ToastHelper.showToast(context.tr(AppStrings.withdrawalTakenByOther));
+      ToastHelper.showToast(takenByOtherMsg);
 
-        await Future.delayed(const Duration(milliseconds: 300));
-        Navigator.of(context).pop();
-      }
+      await Future.delayed(const Duration(milliseconds: 300));
+      if (context.mounted) AppNavigator.pop(context);
     } finally {
       isCheckingExpiredStatus = false;
       update();
@@ -691,7 +686,7 @@ class WithdrawalDetailsController with ChangeNotifier {
     await getCopyLogListById(showLoader: false);
   }
 
-  Future<ConfirmWithdrawalResult> confirmWithdrawal() async {
+  Future<ConfirmWithdrawalResult> confirmWithdrawal({XFile? proofFile}) async {
     if (isReleasing) {
       return ConfirmWithdrawalResult(isSuccess: false, message: "busy");
     }
@@ -709,6 +704,7 @@ class WithdrawalDetailsController with ChangeNotifier {
       Loader.show();
       await ApiService.api.confirmWithdrawal(
         id: withdrawalId ?? withdrawalDetails.id ?? 0,
+        proofFile: proofFile,
         onSuccess: (response) {
           final data = Map<String, dynamic>.from(response.data);
           final nextRaw = data["next"];

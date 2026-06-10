@@ -3,7 +3,6 @@
 import 'package:easy_pay_bank_infomrm/controller/session_controller.dart';
 
 import '../imports.dart';
-import '../services/notification/bubble_service.dart';
 
 class AppController with ChangeNotifier {
   BuildContext context = NavigationService.context;
@@ -35,7 +34,6 @@ class AppController with ChangeNotifier {
     Loader.show(status: currentContext?.tr(AppStrings.loggingOut) ?? "登出中...");
 
     try {
-      await BubbleService.notifyLogout();
       await ApiService.deleteApiToken();
 
       final navigatorState = NavigationService.navigatorKey.currentState;

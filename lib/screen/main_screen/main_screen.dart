@@ -250,7 +250,8 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
                     isLoading: mainController.isLoading,
                     onRefresh: mainController.onRefresh,
                     onLoading: mainController.onLoading,
-                    child: mainController.withdrawalList.isEmpty
+                    child: mainController.withdrawalList.isEmpty &&
+                            mainController.priorityList.isEmpty
                         ? _buildEmptyView()
                         : ListView(
                             padding: const EdgeInsets.fromLTRB(
@@ -260,6 +261,43 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
                               24,
                             ).r,
                             children: [
+                              if (mainController.priorityList.isNotEmpty) ...[
+                                Row(
+                                  children: [
+                                    Icon(
+                                      Icons.push_pin_rounded,
+                                      size: 16.sp,
+                                      color: AppColors.redColor,
+                                    ),
+                                    6.widthSpace,
+                                    AppText(
+                                      '优先订单',
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w600,
+                                      color: AppColors.redColor,
+                                    ),
+                                  ],
+                                ),
+                                12.heightSpace,
+                                ...List.generate(
+                                  mainController.priorityList.length,
+                                  (index) {
+                                    final item =
+                                        mainController.priorityList[index];
+                                    return Padding(
+                                      padding: const EdgeInsets.only(
+                                        bottom: 12,
+                                      ).r,
+                                      child: _buildPriorityTransactionItem(
+                                        item,
+                                        mainController,
+                                        rank: index + 1,
+                                      ),
+                                    );
+                                  },
+                                ),
+                                20.heightSpace,
+                              ],
                               ...mainController.groupedWithdrawalList.entries
                                   .map((entry) {
                                     final String date = entry.key;
@@ -349,6 +387,144 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
         color: AppColors.listingSubTextColor,
       ),
     );
+  }
+
+  Widget _buildPriorityTransactionItem(
+    WithdrawalOrderModel item,
+    MainController mainController, {
+    required int rank,
+  }) {
+    final bool isLocked = item.isLocked ?? false;
+    final bool lockedByMe = item.lockedByMe ?? false;
+    final bool lockedByOther = isLocked && !lockedByMe;
+    final bool canClick = !lockedByOther;
+
+    return InkWellWrapper(
+      onTap: canClick
+          ? () => mainController.goToWithdrawalDetails(
+                item.id!,
+                detailsItem: null,
+                lockedByMe: lockedByMe,
+              )
+          : null,
+      child: Container(
+        width: double.infinity,
+        decoration: BoxDecoration(
+          color: AppColors.whiteColor,
+          borderRadius: BorderRadius.circular(18).r,
+          border: Border.all(color: AppColors.redColor.withValues(alpha: 0.5)),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.blackColor.wOpacity(0.03),
+              blurRadius: 10,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8).r,
+              decoration: BoxDecoration(
+                color: AppColors.redColor,
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(17).r,
+                  topRight: Radius.circular(17).r,
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.push_pin_rounded, color: AppColors.whiteColor, size: 13.sp),
+                  5.widthSpace,
+                  Expanded(
+                    child: AppText(
+                      '置顶优先订单',
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.whiteColor,
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2).r,
+                    decoration: BoxDecoration(
+                      color: AppColors.whiteColor.withValues(alpha: 0.25),
+                      borderRadius: BorderRadius.circular(12).r,
+                    ),
+                    child: AppText(
+                      '#$rank',
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.whiteColor,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(8, 8, 8, 8).r,
+              child: Column(
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            AppText(
+                              _typeText(item),
+                              fontSize: kFont14,
+                              fontWeight: FontWeight.w600,
+                              color: lockedByOther
+                                  ? AppColors.listingDisabledTextColor
+                                  : AppColors.primaryTextColor,
+                            ),
+                            10.heightSpace,
+                            AppText(
+                              item.txId ?? '-',
+                              fontSize: kFont16,
+                              fontWeight: FontWeight.w800,
+                              color: lockedByOther
+                                  ? AppColors.listingDisabledTitleColor
+                                  : AppColors.primaryTextColor,
+                            ),
+                          ],
+                        ),
+                      ),
+                      12.widthSpace,
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          _buildStatusBadge(
+                            isLocked: isLocked,
+                            lockedByMe: lockedByMe,
+                            lockedByOther: lockedByOther,
+                          ),
+                          _buildAmountDisplay(item.withdrawAmount),
+                        ],
+                      ),
+                    ],
+                  ),
+                  5.heightSpace,
+                  _buildWithdrawalExtraInfoSection(item),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _typeText(WithdrawalOrderModel item) {
+    final t = item.type ?? '-';
+    if (t.toLowerCase() == 'kuaizhuan') return context.tr(AppStrings.fastTransfer);
+    if (t.toLowerCase() == 'bank' || t.toLowerCase() == 'bank_transfer') {
+      return context.tr(AppStrings.bankTransfer);
+    }
+    return t;
   }
 
   Widget _buildTransactionItem(

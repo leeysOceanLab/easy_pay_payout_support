@@ -9,6 +9,8 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.graphics.Color
+import android.net.Uri
+import android.widget.ImageView
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
@@ -57,9 +59,11 @@ class BubbleActivity : Activity() {
         const val EXTRA_CREATED_AT      = "created_at"
         const val EXTRA_LOCK_EXPIRES_AT = "lock_expires_at"
 
-        const val ACTION_UPDATE        = "com.example.easy_pay_bank_infomrm.BUBBLE_UPDATE"
-        const val ACTION_BUBBLE_LOGOUT = "com.example.easy_pay_bank_infomrm.BUBBLE_LOGOUT"
-        const val ACTION_TOKEN_UPDATED = "com.example.easy_pay_bank_infomrm.BUBBLE_TOKEN_UPDATED"
+        const val ACTION_UPDATE           = "com.example.easy_pay_bank_infomrm.BUBBLE_UPDATE"
+        const val ACTION_BUBBLE_LOGOUT    = "com.example.easy_pay_bank_infomrm.BUBBLE_LOGOUT"
+        const val ACTION_TOKEN_UPDATED    = "com.example.easy_pay_bank_infomrm.BUBBLE_TOKEN_UPDATED"
+        const val ACTION_USER_ACTION      = "com.example.easy_pay_bank_infomrm.BUBBLE_USER_ACTION"
+        const val REQUEST_GALLERY         = 1001
     }
 
     private val handler = Handler(Looper.getMainLooper())
@@ -72,12 +76,6 @@ class BubbleActivity : Activity() {
 
     private var countdownRunnable: Runnable? = null
     private var isExpired = false
-
-    // ── Inactivity timeout ─────────────────────────────────────────────────────
-    private val INACTIVITY_TIMEOUT_MS = 15 * 60 * 1000L
-    private val INACTIVITY_CHECK_INTERVAL_MS = 30_000L
-    private var lastActivityMs = 0L
-    private var inactivityRunnable: Runnable? = null
 
     // ── Details screen views ───────────────────────────────────────────────────
     private lateinit var layoutDetails: ScrollView
@@ -92,12 +90,14 @@ class BubbleActivity : Activity() {
     private lateinit var rowBankName: LinearLayout
     private lateinit var tvBankName: TextView
     private lateinit var btnCopyAmount: Button
+    private lateinit var btnCopyName: Button
     private lateinit var btnCopyMain: Button
     private lateinit var btnCopyBankName: Button
     private lateinit var tvCopiedStatus: TextView
     private lateinit var tvCountdown: TextView
     private lateinit var btnIncomplete: Button
     private lateinit var btnComplete: Button
+    private lateinit var tvDetailStatus: TextView
 
     // ── Details screen back button ─────────────────────────────────────────────
     private lateinit var tvBackToList: TextView
@@ -108,6 +108,9 @@ class BubbleActivity : Activity() {
     private lateinit var tvListLoading: TextView
     private lateinit var tvListEmpty: TextView
     private lateinit var tvListRefresh: TextView
+
+    private var isUploadingReceipt = false
+    private var listAutoRefreshRunnable: Runnable? = null
 
     // Generation counter — prevents stale fetch results from rendering after a newer refresh
     private var listGeneration = 0
@@ -128,7 +131,6 @@ class BubbleActivity : Activity() {
                     refreshFromPrefs()
                 }
                 ACTION_BUBBLE_LOGOUT -> {
-                    lastActivityMs = 0L
                     showLoginScreen()
                 }
             }
@@ -144,7 +146,6 @@ class BubbleActivity : Activity() {
             "flutter.api_base_url", "https://ezchoya.com/api"
         ) ?: "https://ezchoya.com/api"
 
-        lastActivityMs = System.currentTimeMillis()
         bindViews()
         registerUpdateReceiver()
         refreshFromPrefs()
@@ -152,20 +153,16 @@ class BubbleActivity : Activity() {
 
     override fun onResume() {
         super.onResume()
-        if (layoutLogin.visibility == View.VISIBLE) return
-        checkInactivityTimeout()
-        startInactivityTimer()
     }
 
     override fun onPause() {
         super.onPause()
-        stopInactivityTimer()
     }
 
     override fun onDestroy() {
         unregisterReceiver(updateReceiver)
         stopCountdown()
-        stopInactivityTimer()
+        stopListAutoRefresh()
         handler.removeCallbacksAndMessages(null)
         super.onDestroy()
     }
@@ -186,12 +183,14 @@ class BubbleActivity : Activity() {
         rowBankName      = findViewById(R.id.rowBankName)
         tvBankName       = findViewById(R.id.tvBankName)
         btnCopyAmount    = findViewById(R.id.btnCopyAmount)
+        btnCopyName      = findViewById(R.id.btnCopyName)
         btnCopyMain      = findViewById(R.id.btnCopyMain)
         btnCopyBankName  = findViewById(R.id.btnCopyBankName)
         tvCopiedStatus   = findViewById(R.id.tvCopiedStatus)
         tvCountdown      = findViewById(R.id.tvCountdown)
         btnIncomplete    = findViewById(R.id.btnIncomplete)
         btnComplete      = findViewById(R.id.btnComplete)
+        tvDetailStatus   = findViewById(R.id.tvDetailStatus)
 
         // Details back button
         tvBackToList     = findViewById(R.id.tvBackToList)
@@ -204,7 +203,7 @@ class BubbleActivity : Activity() {
         tvListLoading    = findViewById(R.id.tvListLoading)
         tvListEmpty      = findViewById(R.id.tvListEmpty)
         tvListRefresh    = findViewById(R.id.tvListRefresh)
-        tvListRefresh.setOnClickListener { markActivity(); showOrderList() }
+        tvListRefresh.setOnClickListener { showOrderList() }
 
         // Login screen
         layoutLogin      = findViewById(R.id.layoutLogin)
@@ -213,7 +212,6 @@ class BubbleActivity : Activity() {
         btnOpenFlutter.setOnClickListener { openFlutterLogin() }
 
         btnIncomplete.setOnClickListener {
-            markActivity()
             AlertDialog.Builder(this)
                 .setTitle("有問題")
                 .setMessage("確定要將此訂單標記為有問題嗎？")
@@ -228,13 +226,7 @@ class BubbleActivity : Activity() {
         }
 
         btnComplete.setOnClickListener {
-            markActivity()
-            AlertDialog.Builder(this)
-                .setTitle("完成")
-                .setMessage("確定要將此訂單標記為完成嗎？")
-                .setNegativeButton("取消") { d, _ -> d.dismiss() }
-                .setPositiveButton("確認") { _, _ -> handleCompleteButton() }
-                .show()
+            showUploadReceiptPrompt()
         }
     }
 
@@ -251,6 +243,7 @@ class BubbleActivity : Activity() {
     // ── Screen switching ───────────────────────────────────────────────────────
 
     private fun showDetailsScreen() {
+        stopListAutoRefresh()
         layoutDetails.visibility  = View.VISIBLE
         layoutList.visibility     = View.GONE
         layoutLogin.visibility    = View.GONE
@@ -262,14 +255,34 @@ class BubbleActivity : Activity() {
         layoutList.visibility     = View.VISIBLE
         layoutLogin.visibility    = View.GONE
         tvBackToList.visibility   = View.GONE
+        startListAutoRefresh()
     }
 
     private fun showLoginScreen() {
-        stopInactivityTimer()
+        stopListAutoRefresh()
         layoutDetails.visibility = View.GONE
         layoutList.visibility    = View.GONE
         layoutLogin.visibility   = View.VISIBLE
         tvBackToList.visibility  = View.GONE
+    }
+
+    private fun startListAutoRefresh() {
+        stopListAutoRefresh()
+        val runnable = object : Runnable {
+            override fun run() {
+                if (!isFinishing && layoutList.visibility == View.VISIBLE) {
+                    showOrderList()
+                }
+                handler.postDelayed(this, 60_000L)
+            }
+        }
+        listAutoRefreshRunnable = runnable
+        handler.postDelayed(runnable, 60_000L)
+    }
+
+    private fun stopListAutoRefresh() {
+        listAutoRefreshRunnable?.let { handler.removeCallbacks(it) }
+        listAutoRefreshRunnable = null
     }
 
     @Suppress("OVERRIDE_DEPRECATION")
@@ -285,7 +298,6 @@ class BubbleActivity : Activity() {
 
     /** Release the currently locked order then refresh the listing. */
     private fun releaseAndShowList() {
-        markActivity()
         val id = withdrawalId
         if (id <= 0) { showOrderList(); return }
         val token = prefs.getString("flutter.bubble_token", "") ?: ""
@@ -325,7 +337,7 @@ class BubbleActivity : Activity() {
         val gen = ++listGeneration
         Thread {
             val result   = runCatching { fetchPendingListSync(token, 1) }
-                .getOrDefault(PendingResult(emptyList(), 1))
+                .getOrDefault(PendingResult(emptyList(), emptyList(), 1))
             val myLocked = runCatching { fetchMyLockedSync(token) }.getOrElse { null }
 
             val pendingIds = result.items.map { it.id }.toSet()
@@ -340,11 +352,23 @@ class BubbleActivity : Activity() {
                 listLastPage = result.lastPage
                 tvListLoading.visibility = View.GONE
                 tvListRefresh.isEnabled  = true
-                if (mergedList.isEmpty()) {
+                val totalCount = result.priorityItems.size + mergedList.size
+                if (totalCount == 0) {
                     tvListEmpty.visibility = View.VISIBLE
                 } else {
                     tvListEmpty.visibility = View.GONE
-                    mergedList.forEach { item -> listContainer.addView(buildListItem(item, token)) }
+                    // Priority items pinned at top
+                    if (result.priorityItems.isNotEmpty()) {
+                        listContainer.addView(buildSectionHeader("📌  置頂優先訂單"))
+                        result.priorityItems.forEach { item -> listContainer.addView(buildListItem(item, token)) }
+                    }
+                    // Normal items
+                    if (mergedList.isNotEmpty()) {
+                        if (result.priorityItems.isNotEmpty()) {
+                            listContainer.addView(buildSectionHeader("其他訂單"))
+                        }
+                        mergedList.forEach { item -> listContainer.addView(buildListItem(item, token)) }
+                    }
                     if (listPage < listLastPage) addLoadMoreButton(token)
                 }
             }
@@ -375,7 +399,7 @@ class BubbleActivity : Activity() {
         val nextPage = listPage + 1
         Thread {
             val result = runCatching { fetchPendingListSync(token, nextPage) }
-                .getOrDefault(PendingResult(emptyList(), listLastPage))
+                .getOrDefault(PendingResult(emptyList(), emptyList(), listLastPage))
             handler.post {
                 listPage     = nextPage
                 listLastPage = result.lastPage
@@ -396,10 +420,13 @@ class BubbleActivity : Activity() {
         val createdAt: String,
         val lockedByMe: Boolean = false,
         val isLocked: Boolean = false,
+        val isPriority: Boolean = false,
+        val priorityValue: Int = 0,
     )
 
     private data class PendingResult(
         val items: List<OrderItem>,
+        val priorityItems: List<OrderItem>,
         val lastPage: Int,
     )
 
@@ -409,6 +436,7 @@ class BubbleActivity : Activity() {
         val nextTxId: String = "",
         val nextAmount: String = "",
         val nextName: String = "",
+        val errorMessage: String = "",
     )
 
     private fun fetchPendingListSync(token: String, page: Int = 1): PendingResult {
@@ -422,15 +450,17 @@ class BubbleActivity : Activity() {
             readTimeout    = 10_000
         }
         val code = conn.responseCode
-        if (code !in 200..299) { conn.disconnect(); return PendingResult(emptyList(), page) }
+        if (code !in 200..299) { conn.disconnect(); return PendingResult(emptyList(), emptyList(), page) }
         val body = BufferedReader(InputStreamReader(conn.inputStream)).readText()
         conn.disconnect()
+        val root = JSONObject(body).optJSONObject("data")
         val lastPage = runCatching {
-            JSONObject(body).optJSONObject("data")
-                ?.optJSONObject("pagination")
-                ?.optInt("last_page", 1) ?: 1
+            root?.optJSONObject("pagination")?.optInt("last_page", 1) ?: 1
         }.getOrDefault(1)
-        return PendingResult(items = parseWithdrawals(body), lastPage = lastPage)
+        val priorityItems = parsePriorityItems(body)
+        val priorityIds = priorityItems.map { it.id }.toSet()
+        val normalItems = parseWithdrawals(body).filter { it.id !in priorityIds }
+        return PendingResult(items = normalItems, priorityItems = priorityItems, lastPage = lastPage)
     }
 
     private fun fetchMyLockedSync(token: String): OrderItem? {
@@ -477,6 +507,35 @@ class BubbleActivity : Activity() {
         return list
     }
 
+    private fun parsePriorityItems(json: String): List<OrderItem> {
+        val arr: JSONArray = JSONObject(json)
+            .optJSONObject("data")
+            ?.optJSONArray("priority") ?: return emptyList()
+        val list = mutableListOf<OrderItem>()
+        for (i in 0 until arr.length()) {
+            val o = arr.getJSONObject(i)
+            val rawAmount = o.safeString("withdraw_amount", fallback = "")
+                .replace("HKD", "").replace("hkd", "")
+                .replace("RM", "").replace("rm", "")
+                .replace(",", "").trim()
+            list.add(
+                OrderItem(
+                    id            = o.optInt("id", 0),
+                    txId          = o.safeString("tx_id"),
+                    amount        = rawAmount,
+                    name          = o.safeString("holder_name", "account_name"),
+                    type          = o.safeString("type", fallback = ""),
+                    createdAt     = o.safeString("created_at", fallback = ""),
+                    lockedByMe    = o.optBoolean("locked_by_me", false),
+                    isLocked      = o.optBoolean("is_locked", false),
+                    isPriority    = true,
+                    priorityValue = o.optInt("priority_value", 0),
+                )
+            )
+        }
+        return list
+    }
+
     private fun parseMyLockedItem(json: String): OrderItem? {
         val o = JSONObject(json)
             .optJSONObject("data")
@@ -496,14 +555,76 @@ class BubbleActivity : Activity() {
         )
     }
 
+    private fun buildSectionHeader(title: String): View {
+        val container = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            )
+        }
+        // Top divider line
+        container.addView(View(this).apply {
+            setBackgroundColor(Color.parseColor("#E5E5EA"))
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, dp(1),
+            ).also { it.topMargin = dp(8) }
+        })
+        // Label
+        container.addView(TextView(this).apply {
+            text     = title
+            textSize = 11f
+            setTextColor(Color.parseColor("#888888"))
+            typeface = android.graphics.Typeface.DEFAULT_BOLD
+            setPadding(dp(16), dp(8), dp(16), dp(4))
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            )
+        })
+        return container
+    }
+
     private fun buildListItem(item: OrderItem, token: String): View {
         val isKz = item.type.lowercase() == "kuaizhuan"
 
         val card = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(16), dp(12), dp(16), dp(12))
             setBackgroundColor(Color.WHITE)
         }
+
+        // Priority banner strip
+        if (item.isPriority) {
+            val banner = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity     = android.view.Gravity.CENTER_VERTICAL
+                setBackgroundColor(Color.parseColor("#DC2626"))
+                setPadding(dp(12), dp(5), dp(12), dp(5))
+            }
+            val tvPin = TextView(this).apply {
+                text     = "📌  置頂優先訂單"
+                textSize = 11f
+                setTextColor(Color.WHITE)
+                typeface = android.graphics.Typeface.DEFAULT_BOLD
+                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+            }
+            val tvRank = TextView(this).apply {
+                text     = "# ${item.priorityValue}"
+                textSize = 11f
+                setTextColor(Color.WHITE)
+                typeface = android.graphics.Typeface.DEFAULT_BOLD
+            }
+            banner.addView(tvPin)
+            banner.addView(tvRank)
+            card.addView(banner)
+        }
+
+        // Card body padding
+        val body = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(16), dp(12), dp(16), dp(12))
+        }
+        card.addView(body)
 
         // Row 1: txId + type badge + locked-by-me badge
         val row1 = LinearLayout(this).apply {
@@ -607,8 +728,8 @@ class BubbleActivity : Activity() {
             setTextColor(Color.parseColor("#AAAAAA"))
         }
 
-        card.addView(row1)
-        card.addView(row2.also {
+        body.addView(row1)
+        body.addView(row2.also {
             val lp = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT,
@@ -616,7 +737,7 @@ class BubbleActivity : Activity() {
             lp.topMargin = dp(4)
             it.layoutParams = lp
         })
-        card.addView(tvDate.also {
+        body.addView(tvDate.also {
             val lp = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.WRAP_CONTENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT,
@@ -650,7 +771,6 @@ class BubbleActivity : Activity() {
     }
 
     private fun lockAndShowOrder(id: Int, token: String) {
-        markActivity()
         tvListLoading.text = "鎖定中..."
         tvListLoading.visibility = View.VISIBLE
         Thread {
@@ -667,7 +787,7 @@ class BubbleActivity : Activity() {
                 }
                 OutputStreamWriter(conn.outputStream).use { it.write("{}") }
                 val code = conn.responseCode
-                if (code !in 200..299) return@runCatching false
+                if (code !in 200..299) { return@runCatching false }
                 val body = BufferedReader(InputStreamReader(conn.inputStream)).readText()
                 conn.disconnect()
                 val raw = JSONObject(body).optJSONObject("data")
@@ -733,23 +853,23 @@ class BubbleActivity : Activity() {
         if (isKuaizhuan) {
             tvType.text = "轉數快"
             tvType.setTextColor(0xFF2DD4BF.toInt())
-            tvType.setBackgroundColor(0x1A0D9488.toInt())
+            tvType.setBackgroundColor(0x660D9488.toInt())
             tvNameLabel.text = "持卡人"
             tvMainLabel.text = "電話"
             btnCopyMain.text = "複製電話"
-            btnCopyMain.setTextColor(0xFF2DD4BF.toInt())
-            btnCopyMain.setBackgroundColor(0x1A0D9488.toInt())
+            btnCopyMain.setTextColor(0xFF1C1C1E.toInt())
+            btnCopyMain.setBackgroundColor(0x66333333.toInt())
             rowBankName.visibility    = View.GONE
             btnCopyBankName.visibility = View.GONE
         } else {
             tvType.text = "銀行轉帳"
             tvType.setTextColor(0xFF60A5FA.toInt())
-            tvType.setBackgroundColor(0x140066F6.toInt())
+            tvType.setBackgroundColor(0x660066F6.toInt())
             tvNameLabel.text = "戶口名稱"
             tvMainLabel.text = "帳號"
             btnCopyMain.text = "複製帳號"
-            btnCopyMain.setTextColor(0xFF0066F6.toInt())
-            btnCopyMain.setBackgroundColor(0x140066F6.toInt())
+            btnCopyMain.setTextColor(0xFF1C1C1E.toInt())
+            btnCopyMain.setBackgroundColor(0x66333333.toInt())
             btnCopyBankName.visibility = View.GONE
             if (bankName.isNotEmpty()) {
                 tvBankName.text = bankName
@@ -760,11 +880,14 @@ class BubbleActivity : Activity() {
         }
 
         btnCopyAmount.setOnClickListener {
-            markActivity()
             handleCopy("amount", "金額", amount, tvCopiedStatus)
         }
+        btnCopyName.text = if (isKuaizhuan) "複製持卡人" else "複製戶口名稱"
+        btnCopyName.setOnClickListener {
+            val label = if (isKuaizhuan) "持卡人" else "戶口名稱"
+            handleCopy("name", label, name, tvCopiedStatus)
+        }
         btnCopyMain.setOnClickListener {
-            markActivity()
             val label = if (isKuaizhuan) "電話" else "帳號"
             handleCopy("main", label, mainValue, tvCopiedStatus)
         }
@@ -775,42 +898,9 @@ class BubbleActivity : Activity() {
         startCountdown(expiresAt)
     }
 
-    private fun markActivity() {
-        lastActivityMs = System.currentTimeMillis()
-    }
-
-    private fun startInactivityTimer() {
-        stopInactivityTimer()
-        val tick = object : Runnable {
-            override fun run() {
-                if (isFinishing) return
-                checkInactivityTimeout()
-                handler.postDelayed(this, INACTIVITY_CHECK_INTERVAL_MS)
-            }
-        }
-        inactivityRunnable = tick
-        handler.postDelayed(tick, INACTIVITY_CHECK_INTERVAL_MS)
-    }
-
-    private fun stopInactivityTimer() {
-        inactivityRunnable?.let { handler.removeCallbacks(it) }
-        inactivityRunnable = null
-    }
-
-    private fun checkInactivityTimeout() {
-        if (isFinishing || lastActivityMs <= 0L) return
-        val idle = System.currentTimeMillis() - lastActivityMs
-        if (idle >= INACTIVITY_TIMEOUT_MS) {
-            stopInactivityTimer()
-            stopCountdown()
-            showLoginScreen()
-        }
-    }
-
     private fun openFlutterLogin() {
         prefs.edit()
             .putString("flutter.bubble_token", "")
-            .putBoolean("flutter.bubble_requests_login", true)
             .apply()
         val intent = packageManager.getLaunchIntentForPackage(packageName)
             ?.apply { addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or Intent.FLAG_ACTIVITY_NEW_TASK) }
@@ -827,8 +917,11 @@ class BubbleActivity : Activity() {
     private fun startCountdown(lockExpiresAt: String) {
         if (lockExpiresAt.isEmpty()) { tvCountdown.text = "--:--"; return }
         val expiryMs = parseIsoToMs(lockExpiresAt) ?: run { tvCountdown.text = "--:--"; return }
+        val countdownForId = withdrawalId
         val tick = object : Runnable {
             override fun run() {
+                // User has moved to a different order — this countdown is stale.
+                if (withdrawalId != countdownForId) return
                 val remaining = expiryMs - System.currentTimeMillis()
                 if (remaining <= 0) {
                     tvCountdown.text = "已过期"
@@ -957,36 +1050,128 @@ class BubbleActivity : Activity() {
         }.start()
     }
 
-    private fun handleCompleteButton() {
-        val token = prefs.getString("flutter.bubble_token", "") ?: ""
-        val id = withdrawalId
-        if (id <= 0 || token.isEmpty()) return
-        btnComplete.isEnabled = false
-        callConfirmApiDetail(id, token) { result ->
-            btnComplete.isEnabled = !isExpired
-            if (!result.success) {
-                Toast.makeText(this, "操作失敗，請稍後重試", Toast.LENGTH_SHORT).show()
-                return@callConfirmApiDetail
+    private fun showUploadReceiptPrompt() {
+        isUploadingReceipt = true
+        AlertDialog.Builder(this)
+            .setTitle("上傳轉賬憑證")
+            .setMessage("請上傳轉賬截圖以確認付款完成")
+            .setCancelable(false)
+            .setNegativeButton("取消") { _, _ ->
+                isUploadingReceipt = false
             }
-            if (result.nextId > 0) {
-                AlertDialog.Builder(this)
-                    .setTitle("下一個訂單")
-                    .setMessage("訂單 ${result.nextTxId}（金額：${formatAmount(result.nextAmount)}）已分配給您。")
-                    .setCancelable(false)
-                    .setNegativeButton("結束") { _, _ ->
-                        callCancelApiById(result.nextId, token) { showOrderList() }
-                    }
-                    .setPositiveButton("繼續") { _, _ ->
-                        lockAndShowOrder(result.nextId, token)
-                    }
-                    .show()
-            } else {
-                showOrderList()
+            .setPositiveButton("選擇圖片") { _, _ ->
+                val intent = Intent(Intent.ACTION_GET_CONTENT).apply { type = "image/*" }
+                @Suppress("DEPRECATION")
+                startActivityForResult(intent, REQUEST_GALLERY)
             }
+            .show()
+    }
+
+    @Deprecated("Deprecated in Java")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        @Suppress("DEPRECATION")
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode != REQUEST_GALLERY) return
+        if (resultCode == RESULT_OK && data?.data != null) {
+            isUploadingReceipt = false
+            val uri = data.data!!
+            // Read bytes immediately while the URI permission is guaranteed fresh.
+            val mimeType = contentResolver.getType(uri) ?: "image/jpeg"
+            val fileBytes = runCatching { contentResolver.openInputStream(uri)?.readBytes() }.getOrNull()
+            if (fileBytes == null) {
+                tvDetailStatus.setTextColor(android.graphics.Color.parseColor("#DC2626"))
+                tvDetailStatus.text = "無法讀取圖片，請重新選擇"
+                tvDetailStatus.visibility = View.VISIBLE
+                return
+            }
+            showReceiptPreviewDialog(uri, fileBytes, mimeType)
+        } else if (isUploadingReceipt) {
+            // User cancelled gallery — re-show upload prompt
+            showUploadReceiptPrompt()
         }
     }
 
-    private fun callConfirmApiDetail(id: Int, token: String, onResult: (ConfirmResult) -> Unit) {
+    private fun showReceiptPreviewDialog(uri: Uri, fileBytes: ByteArray, mimeType: String) {
+        val imageView = ImageView(this).apply {
+            setImageURI(uri)
+            adjustViewBounds = true
+            maxHeight = dp(300)
+            scaleType = ImageView.ScaleType.FIT_CENTER
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            )
+        }
+        val container = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(8), dp(8), dp(8), 0)
+            addView(imageView)
+        }
+        AlertDialog.Builder(this)
+            .setTitle("確認凭證")
+            .setView(container)
+            .setCancelable(false)
+            .setNegativeButton("重新選擇") { _, _ ->
+                val intent = Intent(Intent.ACTION_GET_CONTENT).apply { type = "image/*" }
+                @Suppress("DEPRECATION")
+                startActivityForResult(intent, REQUEST_GALLERY)
+            }
+            .setPositiveButton("確認上傳") { _, _ ->
+                confirmOrderAfterUpload(fileBytes, mimeType)
+            }
+            .show()
+    }
+
+    private fun confirmOrderAfterUpload(fileBytes: ByteArray, mimeType: String) {
+        val token = prefs.getString("flutter.bubble_token", "") ?: ""
+        val id = withdrawalId
+        if (token.isEmpty()) {
+            tvDetailStatus.setTextColor(android.graphics.Color.parseColor("#DC2626"))
+            tvDetailStatus.text = "登入已過期，請重新登入"
+            tvDetailStatus.visibility = View.VISIBLE
+            return
+        }
+        if (id <= 0) {
+            releaseAndShowList()
+            return
+        }
+        btnComplete.isEnabled = false
+        tvDetailStatus.setTextColor(android.graphics.Color.parseColor("#6B7280"))
+        tvDetailStatus.text = "上傳中..."
+        tvDetailStatus.visibility = View.VISIBLE
+        callConfirmApiDetail(id, token, fileBytes, mimeType) { result ->
+            btnComplete.isEnabled = !isExpired
+            if (!result.success) {
+                tvDetailStatus.setTextColor(android.graphics.Color.parseColor("#DC2626"))
+                tvDetailStatus.text = result.errorMessage
+                return@callConfirmApiDetail
+            }
+            tvDetailStatus.setTextColor(android.graphics.Color.parseColor("#16A34A"))
+            tvDetailStatus.text = "✓ 上傳成功，完成代付"
+            handler.postDelayed({ handleAfterComplete(result) }, 800)
+        }
+    }
+
+    private fun handleAfterComplete(result: ConfirmResult) {
+        val token = prefs.getString("flutter.bubble_token", "") ?: ""
+        if (result.nextId > 0) {
+            AlertDialog.Builder(this)
+                .setTitle("下一個訂單")
+                .setMessage("訂單 ${result.nextTxId}（金額：${formatAmount(result.nextAmount)}）已分配給您。")
+                .setCancelable(false)
+                .setNegativeButton("結束") { _, _ ->
+                    callCancelApiById(result.nextId, token) { showOrderList() }
+                }
+                .setPositiveButton("繼續") { _, _ ->
+                    lockAndShowOrder(result.nextId, token)
+                }
+                .show()
+        } else {
+            showOrderList()
+        }
+    }
+
+    private fun callConfirmApiDetail(id: Int, token: String, fileBytes: ByteArray? = null, mimeType: String = "image/jpeg", onResult: (ConfirmResult) -> Unit) {
         Thread {
             val result = runCatching {
                 val conn = URL("$apiBaseUrl/admin-withdraw/withdrawals/$id/confirm")
@@ -994,17 +1179,53 @@ class BubbleActivity : Activity() {
                 conn.apply {
                     requestMethod = "POST"
                     setRequestProperty("Authorization", "Bearer $token")
-                    setRequestProperty("Content-Type", "application/json")
+                    setRequestProperty("Accept", "application/json")
                     doOutput = true
-                    connectTimeout = 10_000
-                    readTimeout    = 10_000
+                    connectTimeout = 30_000
+                    readTimeout    = 30_000
                 }
-                OutputStreamWriter(conn.outputStream).use { it.write("{}") }
+
+                if (fileBytes != null) {
+                    val boundary = "----BubbleBoundary${System.currentTimeMillis()}"
+                    conn.setRequestProperty("Content-Type", "multipart/form-data; boundary=$boundary")
+                    val ext = when {
+                        mimeType.contains("png") -> "png"
+                        mimeType.contains("gif") -> "gif"
+                        mimeType.contains("webp") -> "webp"
+                        else -> "jpg"
+                    }
+                    conn.outputStream.use { out ->
+                        val CRLF = "\r\n"
+                        fun writeLine(s: String) = out.write((s + CRLF).toByteArray(Charsets.UTF_8))
+                        writeLine("--$boundary")
+                        writeLine("Content-Disposition: form-data; name=\"proof\"; filename=\"proof.$ext\"")
+                        writeLine("Content-Type: $mimeType")
+                        writeLine("")
+                        out.write(fileBytes)
+                        writeLine("")
+                        writeLine("--$boundary--")
+                    }
+                } else {
+                    conn.setRequestProperty("Content-Type", "application/json")
+                    conn.outputStream.bufferedWriter().use { it.write("{}") }
+                }
+
                 val code = conn.responseCode
-                if (code !in 200..299) { conn.disconnect(); return@runCatching ConfirmResult(false) }
+                if (code !in 200..299) {
+                    val errBody = runCatching {
+                        BufferedReader(InputStreamReader(conn.errorStream)).readText()
+                    }.getOrDefault("")
+                    conn.disconnect()
+                    val errMsg = runCatching {
+                        JSONObject(errBody).optString("message", "").ifEmpty { "操作失敗，請稍後重試" }
+                    }.getOrDefault("操作失敗，請稍後重試")
+                    return@runCatching ConfirmResult(false, errorMessage = errMsg)
+                }
                 val body = BufferedReader(InputStreamReader(conn.inputStream)).readText()
                 conn.disconnect()
-                val next = JSONObject(body).optJSONObject("data")?.optJSONObject("next")
+                val next = if (body.isNotBlank())
+                    runCatching { JSONObject(body).optJSONObject("data")?.optJSONObject("next") }.getOrNull()
+                else null
                 if (next != null && next.optInt("id", 0) > 0) {
                     val rawAmt = next.safeString("withdraw_amount", fallback = "")
                         .replace("HKD", "").replace("hkd", "")
@@ -1020,8 +1241,19 @@ class BubbleActivity : Activity() {
                 } else {
                     ConfirmResult(success = true)
                 }
-            }.getOrDefault(ConfirmResult(false))
-            handler.post { onResult(result) }
+            }.getOrElse { e -> ConfirmResult(false, errorMessage = e.message?.take(120) ?: "操作失敗，請稍後重試") }
+            handler.post {
+                try {
+                    onResult(result)
+                } catch (e: Exception) {
+                    try {
+                        tvDetailStatus.setTextColor(android.graphics.Color.parseColor("#DC2626"))
+                        tvDetailStatus.text = "錯誤: ${e.message?.take(80) ?: "未知錯誤"}"
+                        tvDetailStatus.visibility = View.VISIBLE
+                        btnComplete.isEnabled = true
+                    } catch (_: Exception) {}
+                }
+            }
         }.start()
     }
 
@@ -1075,7 +1307,7 @@ class BubbleActivity : Activity() {
                 }
                 OutputStreamWriter(conn.outputStream).use { it.write("{}") }
                 val code = conn.responseCode
-                if (code !in 200..299) return@runCatching false
+                if (code !in 200..299) { return@runCatching false }
                 val body = BufferedReader(InputStreamReader(conn.inputStream)).readText()
                 conn.disconnect()
                 val raw = JSONObject(body).optJSONObject("data")

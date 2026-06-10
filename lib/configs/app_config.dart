@@ -1,4 +1,4 @@
-enum AppFlavor { staging, easyPay, threeSixty }
+enum AppFlavor { staging, easyPay, threeSixty, ffPay }
 
 class AppConfig {
   final AppFlavor flavor;
