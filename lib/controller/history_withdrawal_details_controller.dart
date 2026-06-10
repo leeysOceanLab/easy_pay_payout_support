@@ -5,6 +5,7 @@ class HistoryWithdrawalDetailsController with ChangeNotifier {
 
   bool isLoading = false;
   bool isLoadingCopyLogs = false;
+  bool isUploadingProofs = false;
 
   int? withdrawalId;
   WithdrawalDetailsModel withdrawalDetails = WithdrawalDetailsModel();
@@ -121,6 +122,68 @@ class HistoryWithdrawalDetailsController with ChangeNotifier {
     } catch (e) {
       printLog("history onCopyField error: $e");
     }
+  }
+
+  Future<bool> uploadProofs(List<XFile> proofFiles) async {
+    final String txId = withdrawalDetails.txId ?? "";
+    if (txId.isEmpty) return false;
+
+    isUploadingProofs = true;
+    update();
+
+    bool success = false;
+
+    try {
+      await ApiService.api.uploadProofs(
+        txId: txId,
+        proofFiles: proofFiles,
+        showLoader: false,
+        onSuccess: (response) {
+          success = true;
+          printLog("uploadProofs response.data: ${response.data}");
+
+          // Try to parse proofs from the upload response directly
+          final dynamic raw = response.data;
+          List<String>? newProofs;
+
+          if (raw is Map<String, dynamic>) {
+            // Try common keys: proofs, data.proofs, withdrawal.proofs
+            final dynamic proofsRaw =
+                raw["proofs"] ??
+                (raw["data"] is Map ? raw["data"]["proofs"] : null) ??
+                (raw["withdrawal"] is Map
+                    ? raw["withdrawal"]["proofs"]
+                    : null);
+
+            if (proofsRaw is List) {
+              newProofs = proofsRaw.map((e) => e.toString()).toList();
+            }
+
+            // If the response contains the full withdrawal object, reload all details
+            final dynamic withdrawalRaw =
+                raw["withdrawal"] ?? (raw["data"] is Map ? raw["data"] : null);
+            if (withdrawalRaw is Map<String, dynamic>) {
+              withdrawalDetails =
+                  WithdrawalDetailsModel.fromJson(withdrawalRaw);
+            } else if (newProofs != null) {
+              withdrawalDetails =
+                  withdrawalDetails.copyWith(proofs: newProofs);
+            }
+          }
+
+          update();
+        },
+        onError: (error) {
+          printLog("uploadProofs error: $error");
+        },
+      );
+    } catch (e) {
+      printLog("uploadProofs exception: $e");
+    }
+
+    isUploadingProofs = false;
+    update();
+    return success;
   }
 
   Future<void> getCopyLogListById({bool showLoader = false}) async {

@@ -17,6 +17,7 @@ class WithdrawalDetailsModel {
   final String? createdAt;
   final String? lockExpiresAt;
   final String? completedAt;
+  final List<String>? proofs;
 
   WithdrawalDetailsModel({
     this.id,
@@ -37,6 +38,7 @@ class WithdrawalDetailsModel {
     this.createdAt,
     this.lockExpiresAt,
     this.completedAt,
+    this.proofs,
   });
 
   factory WithdrawalDetailsModel.fromJson(Map<String, dynamic> json) {
@@ -59,6 +61,9 @@ class WithdrawalDetailsModel {
       createdAt: json["created_at"]?.toString(),
       lockExpiresAt: json["lock_expires_at"]?.toString(),
       completedAt: json['completed_at']?.toString(),
+      proofs: (json["proofs"] as List<dynamic>?)
+          ?.map((e) => e.toString())
+          .toList(),
     );
   }
 
@@ -82,6 +87,7 @@ class WithdrawalDetailsModel {
       "created_at": createdAt,
       "lock_expires_at": lockExpiresAt,
       "completed_at": completedAt,
+      "proofs": proofs,
     };
   }
 
@@ -104,6 +110,7 @@ class WithdrawalDetailsModel {
     String? createdAt,
     String? lockExpiresAt,
     String? completedAt,
+    List<String>? proofs,
   }) {
     return WithdrawalDetailsModel(
       id: id ?? this.id,
@@ -124,6 +131,7 @@ class WithdrawalDetailsModel {
       createdAt: createdAt ?? this.createdAt,
       lockExpiresAt: lockExpiresAt ?? this.lockExpiresAt,
       completedAt: completedAt ?? this.completedAt,
+      proofs: proofs ?? this.proofs,
     );
   }
 }

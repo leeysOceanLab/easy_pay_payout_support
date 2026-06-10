@@ -1035,6 +1035,12 @@ class _WithdrawalDetailsScreenState extends State<WithdrawalDetailsScreen> {
                                       ],
                                     ),
                                   ),
+                                  if (details.proofs != null &&
+                                      details.proofs!.isNotEmpty)
+                                    _buildProofImages(
+                                      context,
+                                      details.proofs!,
+                                    ),
                                   50.heightSpace,
                                 ],
                               ),
@@ -1202,6 +1208,81 @@ class _WithdrawalDetailsScreenState extends State<WithdrawalDetailsScreen> {
     );
   }
 
+  void _openFullScreenImage(
+    BuildContext context,
+    List<String> urls,
+    int initialIndex,
+  ) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => _FullScreenImageViewer(
+          urls: urls,
+          initialIndex: initialIndex,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildProofImages(BuildContext context, List<String> proofs) {
+    return Container(
+      margin: const EdgeInsets.only(top: 16).r,
+      padding: const EdgeInsets.all(16).r,
+      color: AppColors.whiteColor,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          AppText(
+            '凭证',
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: AppColors.secondaryTextColor,
+          ),
+          12.heightSpace,
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: proofs.length,
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              crossAxisSpacing: 8,
+              mainAxisSpacing: 8,
+              childAspectRatio: 1,
+            ),
+            itemBuilder: (_, index) {
+              return GestureDetector(
+                onTap: () => _openFullScreenImage(context, proofs, index),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(10).r,
+                  child: Image.network(
+                    proofs[index],
+                    fit: BoxFit.cover,
+                    loadingBuilder: (_, child, progress) {
+                      if (progress == null) return child;
+                      return Container(
+                        color: AppColors.lightGreyBackgroundColor,
+                        child: const Center(
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                      );
+                    },
+                    errorBuilder: (_, __, ___) => Container(
+                      color: AppColors.lightGreyBackgroundColor,
+                      child: Icon(
+                        Icons.broken_image_rounded,
+                        color: AppColors.secondaryTextColor,
+                        size: 32.sp,
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _infoTile({
     required BuildContext context,
     required String label,
@@ -1310,6 +1391,79 @@ class _WithdrawalDetailsScreenState extends State<WithdrawalDetailsScreen> {
             ),
           ],
         ],
+      ),
+    );
+  }
+}
+
+class _FullScreenImageViewer extends StatefulWidget {
+  final List<String> urls;
+  final int initialIndex;
+
+  const _FullScreenImageViewer({
+    required this.urls,
+    required this.initialIndex,
+  });
+
+  @override
+  State<_FullScreenImageViewer> createState() => _FullScreenImageViewerState();
+}
+
+class _FullScreenImageViewerState extends State<_FullScreenImageViewer> {
+  late final PageController _pageController;
+  late int _currentIndex;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentIndex = widget.initialIndex;
+    _pageController = PageController(initialPage: widget.initialIndex);
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: Colors.black,
+        iconTheme: const IconThemeData(color: Colors.white),
+        title: Text(
+          '${_currentIndex + 1} / ${widget.urls.length}',
+          style: const TextStyle(color: Colors.white, fontSize: 16),
+        ),
+        centerTitle: true,
+      ),
+      body: PageView.builder(
+        controller: _pageController,
+        itemCount: widget.urls.length,
+        onPageChanged: (i) => setState(() => _currentIndex = i),
+        itemBuilder: (_, index) {
+          return InteractiveViewer(
+            child: Center(
+              child: Image.network(
+                widget.urls[index],
+                fit: BoxFit.contain,
+                loadingBuilder: (_, child, progress) {
+                  if (progress == null) return child;
+                  return const Center(
+                    child: CircularProgressIndicator(color: Colors.white),
+                  );
+                },
+                errorBuilder: (_, _, _) => const Icon(
+                  Icons.broken_image_rounded,
+                  color: Colors.white54,
+                  size: 64,
+                ),
+              ),
+            ),
+          );
+        },
       ),
     );
   }

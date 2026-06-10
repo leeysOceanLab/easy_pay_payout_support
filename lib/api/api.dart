@@ -224,6 +224,29 @@ class Api {
     }
   }
 
+  /// Upload Proofs
+  Future<void> uploadProofs({
+    required String txId,
+    required List<XFile> proofFiles,
+    required Function(ApiResponseModel) onSuccess,
+    bool showLoader = false,
+    Function(String)? onError,
+  }) async {
+    await HttpClientCustom.multipartPost(
+      showLoader: showLoader,
+      apiUrl: apiUrl,
+      endPoint: "/admin-withdraw/withdrawals/upload-proofs",
+      withBearer: true,
+      params: {"tx_id": txId},
+      files: {"proofs": proofFiles.map((f) => File(f.path)).toList()},
+      onSuccess: onSuccess,
+      onError: (error) {
+        ToastHelper.showToast(error);
+        if (onError != null) onError(error);
+      },
+    );
+  }
+
   /// Update Copy Log
   Future<void> updateCopyLog({
     required int id,

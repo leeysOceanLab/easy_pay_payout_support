@@ -383,6 +383,15 @@ class _HistoryWithdrawalDetailsScreenState
                               ],
                             ),
                           ),
+                          if (details.proofs != null &&
+                              details.proofs!.isNotEmpty)
+                            _buildProofImages(
+                              context,
+                              details.proofs!,
+                              controller,
+                            )
+                          else
+                            _buildAddProofButton(context, controller),
                           50.heightSpace,
                         ],
                       ),
@@ -390,6 +399,269 @@ class _HistoryWithdrawalDetailsScreenState
             ),
           );
         },
+      ),
+    );
+  }
+
+  Future<void> _pickAndUploadProofs(
+    BuildContext context,
+    HistoryWithdrawalDetailsController controller,
+  ) async {
+    final List<XFile> picked = await ImagePicker().pickMultiImage();
+    if (picked.isEmpty) return;
+    if (!context.mounted) return;
+
+    final bool? confirmed = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        return Dialog(
+          backgroundColor: AppColors.whiteColor,
+          insetPadding: const EdgeInsets.symmetric(horizontal: 24).r,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20).r,
+          ),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 12).r,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                AppText(
+                  '确认凭证',
+                  fontSize: 17,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.primaryTextColor,
+                ),
+                8.heightSpace,
+                AppText(
+                  '已选择 ${picked.length} 张图片',
+                  fontSize: 13,
+                  color: AppColors.secondaryTextColor,
+                ),
+                12.heightSpace,
+                ConstrainedBox(
+                  constraints: BoxConstraints(maxHeight: 300.h),
+                  child: SingleChildScrollView(
+                    child: Column(
+                      children: picked
+                          .map((f) => Padding(
+                                padding: const EdgeInsets.only(bottom: 8).r,
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(10).r,
+                                  child: Image.file(
+                                    File(f.path),
+                                    fit: BoxFit.fitWidth,
+                                    width: double.infinity,
+                                  ),
+                                ),
+                              ))
+                          .toList(),
+                    ),
+                  ),
+                ),
+                12.heightSpace,
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () =>
+                            Navigator.of(dialogContext).pop(false),
+                        style: OutlinedButton.styleFrom(
+                          minimumSize: Size(0, 44.h),
+                          side: BorderSide(color: AppColors.greyLightColor),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12).r,
+                          ),
+                        ),
+                        child: AppText(
+                          '重新选择',
+                          fontSize: 14,
+                          color: AppColors.secondaryTextColor,
+                        ),
+                      ),
+                    ),
+                    12.widthSpace,
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () =>
+                            Navigator.of(dialogContext).pop(true),
+                        style: ElevatedButton.styleFrom(
+                          minimumSize: Size(0, 44.h),
+                          backgroundColor: AppColors.completedButtonColor,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12).r,
+                          ),
+                        ),
+                        child: AppText(
+                          '确认上传',
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.whiteColor,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    if (confirmed != true) {
+      if (!context.mounted) return;
+      return _pickAndUploadProofs(context, controller);
+    }
+
+    if (!context.mounted) return;
+    final bool success = await controller.uploadProofs(picked);
+    if (!context.mounted) return;
+    ToastHelper.showToast(success ? '凭证上传成功' : '上传失败，请重试');
+  }
+
+  Widget _buildAddProofButton(
+    BuildContext context,
+    HistoryWithdrawalDetailsController controller,
+  ) {
+    return Container(
+      margin: const EdgeInsets.only(top: 16).r,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12).r,
+      color: AppColors.whiteColor,
+      child: SizedBox(
+        width: double.infinity,
+        height: 48.h,
+        child: OutlinedButton.icon(
+          onPressed: controller.isUploadingProofs
+              ? null
+              : () => _pickAndUploadProofs(context, controller),
+          style: OutlinedButton.styleFrom(
+            side: BorderSide(color: AppColors.primaryNoContextColor),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(14).r,
+            ),
+          ),
+          icon: controller.isUploadingProofs
+              ? SizedBox(
+                  width: 18.w,
+                  height: 18.w,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: AppColors.primaryNoContextColor,
+                  ),
+                )
+              : Icon(
+                  Icons.upload_rounded,
+                  color: AppColors.primaryNoContextColor,
+                  size: 20.sp,
+                ),
+          label: AppText(
+            '添加凭证',
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: AppColors.primaryNoContextColor,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildProofImages(
+    BuildContext context,
+    List<String> proofs,
+    HistoryWithdrawalDetailsController controller,
+  ) {
+    return Container(
+      margin: const EdgeInsets.only(top: 16).r,
+      padding: const EdgeInsets.all(16).r,
+      color: AppColors.whiteColor,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: AppText(
+                  '凭证',
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.secondaryTextColor,
+                ),
+              ),
+              GestureDetector(
+                onTap: controller.isUploadingProofs
+                    ? null
+                    : () => _pickAndUploadProofs(context, controller),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.add_rounded,
+                      size: 16.sp,
+                      color: AppColors.primaryNoContextColor,
+                    ),
+                    4.widthSpace,
+                    AppText(
+                      '添加凭证',
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.primaryNoContextColor,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          12.heightSpace,
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: proofs.length,
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              crossAxisSpacing: 8,
+              mainAxisSpacing: 8,
+              childAspectRatio: 1,
+            ),
+            itemBuilder: (_, index) {
+              return GestureDetector(
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => _HistoryFullScreenImageViewer(
+                      urls: proofs,
+                      initialIndex: index,
+                    ),
+                  ),
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(10).r,
+                  child: Image.network(
+                    proofs[index],
+                    fit: BoxFit.cover,
+                    loadingBuilder: (_, child, progress) {
+                      if (progress == null) return child;
+                      return Container(
+                        color: AppColors.lightGreyBackgroundColor,
+                        child: const Center(
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                      );
+                    },
+                    errorBuilder: (_, _, _) => Container(
+                      color: AppColors.lightGreyBackgroundColor,
+                      child: Icon(
+                        Icons.broken_image_rounded,
+                        color: AppColors.secondaryTextColor,
+                        size: 32.sp,
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ],
       ),
     );
   }
@@ -532,6 +804,81 @@ class _HistoryWithdrawalDetailsScreenState
             ),
           ],
         ],
+      ),
+    );
+  }
+}
+
+class _HistoryFullScreenImageViewer extends StatefulWidget {
+  final List<String> urls;
+  final int initialIndex;
+
+  const _HistoryFullScreenImageViewer({
+    required this.urls,
+    required this.initialIndex,
+  });
+
+  @override
+  State<_HistoryFullScreenImageViewer> createState() =>
+      _HistoryFullScreenImageViewerState();
+}
+
+class _HistoryFullScreenImageViewerState
+    extends State<_HistoryFullScreenImageViewer> {
+  late final PageController _pageController;
+  late int _currentIndex;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentIndex = widget.initialIndex;
+    _pageController = PageController(initialPage: widget.initialIndex);
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: Colors.black,
+        iconTheme: const IconThemeData(color: Colors.white),
+        title: Text(
+          '${_currentIndex + 1} / ${widget.urls.length}',
+          style: const TextStyle(color: Colors.white, fontSize: 16),
+        ),
+        centerTitle: true,
+      ),
+      body: PageView.builder(
+        controller: _pageController,
+        itemCount: widget.urls.length,
+        onPageChanged: (i) => setState(() => _currentIndex = i),
+        itemBuilder: (_, index) {
+          return InteractiveViewer(
+            child: Center(
+              child: Image.network(
+                widget.urls[index],
+                fit: BoxFit.contain,
+                loadingBuilder: (_, child, progress) {
+                  if (progress == null) return child;
+                  return const Center(
+                    child: CircularProgressIndicator(color: Colors.white),
+                  );
+                },
+                errorBuilder: (_, _, _) => const Icon(
+                  Icons.broken_image_rounded,
+                  color: Colors.white54,
+                  size: 64,
+                ),
+              ),
+            ),
+          );
+        },
       ),
     );
   }
