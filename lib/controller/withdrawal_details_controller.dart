@@ -686,7 +686,7 @@ class WithdrawalDetailsController with ChangeNotifier {
     await getCopyLogListById(showLoader: false);
   }
 
-  Future<ConfirmWithdrawalResult> confirmWithdrawal({XFile? proofFile}) async {
+  Future<ConfirmWithdrawalResult> confirmWithdrawal({List<XFile>? proofFiles}) async {
     if (isReleasing) {
       return ConfirmWithdrawalResult(isSuccess: false, message: "busy");
     }
@@ -704,7 +704,7 @@ class WithdrawalDetailsController with ChangeNotifier {
       Loader.show();
       await ApiService.api.confirmWithdrawal(
         id: withdrawalId ?? withdrawalDetails.id ?? 0,
-        proofFile: proofFile,
+        proofFiles: proofFiles,
         onSuccess: (response) {
           final data = Map<String, dynamic>.from(response.data);
           final nextRaw = data["next"];

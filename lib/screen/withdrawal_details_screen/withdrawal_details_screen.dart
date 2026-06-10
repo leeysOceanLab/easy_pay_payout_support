@@ -563,16 +563,120 @@ class _WithdrawalDetailsScreenState extends State<WithdrawalDetailsScreen> {
     Navigator.of(context).pop(true);
   }
 
+  Future<List<XFile>?> _pickAndPreviewReceipts(BuildContext context) async {
+    // Step 1: pick
+    final List<XFile> picked = await ImagePicker().pickMultiImage();
+    if (picked.isEmpty) return null;
+    if (!context.mounted) return null;
+
+    // Step 2: preview + confirm
+    final bool? confirmed = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        return Dialog(
+          backgroundColor: AppColors.whiteColor,
+          insetPadding: const EdgeInsets.symmetric(horizontal: 24).r,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20).r,
+          ),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 12).r,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                AppText(
+                  '確認凭證',
+                  fontSize: 17,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.primaryTextColor,
+                ),
+                8.heightSpace,
+                AppText(
+                  '已選擇 ${picked.length} 張圖片',
+                  fontSize: 13,
+                  color: AppColors.secondaryTextColor,
+                ),
+                12.heightSpace,
+                ConstrainedBox(
+                  constraints: BoxConstraints(maxHeight: 300.h),
+                  child: SingleChildScrollView(
+                    child: Column(
+                      children: picked
+                          .map((f) => Padding(
+                                padding: const EdgeInsets.only(bottom: 8).r,
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(10).r,
+                                  child: Image.file(
+                                    File(f.path),
+                                    fit: BoxFit.fitWidth,
+                                    width: double.infinity,
+                                  ),
+                                ),
+                              ))
+                          .toList(),
+                    ),
+                  ),
+                ),
+                12.heightSpace,
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.of(dialogContext).pop(false),
+                        style: OutlinedButton.styleFrom(
+                          minimumSize: Size(0, 44.h),
+                          side: BorderSide(color: AppColors.greyLightColor),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12).r,
+                          ),
+                        ),
+                        child: AppText('重新選擇', fontSize: 14, color: AppColors.secondaryTextColor),
+                      ),
+                    ),
+                    12.widthSpace,
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () => Navigator.of(dialogContext).pop(true),
+                        style: ElevatedButton.styleFrom(
+                          minimumSize: Size(0, 44.h),
+                          backgroundColor: AppColors.completedButtonColor,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12).r,
+                          ),
+                        ),
+                        child: AppText('確認上傳', fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.whiteColor),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    if (confirmed == true) return picked;
+    // Re-select
+    if (!context.mounted) return null;
+    return _pickAndPreviewReceipts(context);
+  }
+
   Future<void> _handleConfirmCompleted(
     BuildContext context,
     WithdrawalDetailsController controller,
   ) async {
     final bool shouldContinue = await _showCompleteConfirmDialog(context);
     if (!shouldContinue) return;
-
     if (!context.mounted) return;
 
-    final ConfirmWithdrawalResult result = await controller.confirmWithdrawal();
+    final List<XFile>? proofFiles = await _pickAndPreviewReceipts(context);
+    if (proofFiles == null) return;
+    if (!context.mounted) return;
+
+    final ConfirmWithdrawalResult result = await controller.confirmWithdrawal(proofFiles: proofFiles);
 
     if (!context.mounted) return;
     if (!result.isSuccess) return;

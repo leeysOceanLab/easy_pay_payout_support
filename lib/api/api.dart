@@ -194,21 +194,34 @@ class Api {
     required Function(ApiResponseModel) onSuccess,
     bool showLoader = false,
     Function(String)? onError,
-    XFile? proofFile,
+    List<XFile>? proofFiles,
   }) async {
-    await HttpClientCustom.httpPostWithFile(
-      showLoader: showLoader,
-      apiUrl: apiUrl,
-      endPoint: "/admin-withdraw/withdrawals/${id.toString()}/confirm",
-      withBearer: true,
-      fileKey: proofFile != null ? "proof" : null,
-      file: proofFile,
-      onSuccess: onSuccess,
-      onError: (error) {
-        ToastHelper.showToast(error);
-        if (onError != null) onError(error);
-      },
-    );
+    if (proofFiles != null && proofFiles.isNotEmpty) {
+      await HttpClientCustom.multipartPost(
+        showLoader: showLoader,
+        apiUrl: apiUrl,
+        endPoint: "/admin-withdraw/withdrawals/${id.toString()}/confirm",
+        withBearer: true,
+        files: {"proofs": proofFiles.map((f) => File(f.path)).toList()},
+        onSuccess: onSuccess,
+        onError: (error) {
+          ToastHelper.showToast(error);
+          if (onError != null) onError(error);
+        },
+      );
+    } else {
+      await HttpClientCustom.httpPostWithFile(
+        showLoader: showLoader,
+        apiUrl: apiUrl,
+        endPoint: "/admin-withdraw/withdrawals/${id.toString()}/confirm",
+        withBearer: true,
+        onSuccess: onSuccess,
+        onError: (error) {
+          ToastHelper.showToast(error);
+          if (onError != null) onError(error);
+        },
+      );
+    }
   }
 
   /// Update Copy Log

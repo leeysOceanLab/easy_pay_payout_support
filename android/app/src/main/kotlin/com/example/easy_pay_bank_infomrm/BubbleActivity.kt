@@ -1054,13 +1054,16 @@ class BubbleActivity : Activity() {
         isUploadingReceipt = true
         AlertDialog.Builder(this)
             .setTitle("上傳轉賬憑證")
-            .setMessage("請上傳轉賬截圖以確認付款完成")
+            .setMessage("請上傳轉賬截圖以確認付款完成（可多選）")
             .setCancelable(false)
             .setNegativeButton("取消") { _, _ ->
                 isUploadingReceipt = false
             }
             .setPositiveButton("選擇圖片") { _, _ ->
-                val intent = Intent(Intent.ACTION_GET_CONTENT).apply { type = "image/*" }
+                val intent = Intent(Intent.ACTION_GET_CONTENT).apply {
+                    type = "image/*"
+                    putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true)
+                }
                 @Suppress("DEPRECATION")
                 startActivityForResult(intent, REQUEST_GALLERY)
             }
@@ -1072,31 +1075,44 @@ class BubbleActivity : Activity() {
         @Suppress("DEPRECATION")
         super.onActivityResult(requestCode, resultCode, data)
         if (requestCode != REQUEST_GALLERY) return
-        if (resultCode == RESULT_OK && data?.data != null) {
-            isUploadingReceipt = false
-            val uri = data.data!!
-            // Read bytes immediately while the URI permission is guaranteed fresh.
-            val mimeType = contentResolver.getType(uri) ?: "image/jpeg"
-            val fileBytes = runCatching { contentResolver.openInputStream(uri)?.readBytes() }.getOrNull()
-            if (fileBytes == null) {
-                tvDetailStatus.setTextColor(android.graphics.Color.parseColor("#DC2626"))
-                tvDetailStatus.text = "無法讀取圖片，請重新選擇"
-                tvDetailStatus.visibility = View.VISIBLE
-                return
-            }
-            showReceiptPreviewDialog(uri, fileBytes, mimeType)
-        } else if (isUploadingReceipt) {
-            // User cancelled gallery — re-show upload prompt
-            showUploadReceiptPrompt()
+        if (resultCode != RESULT_OK || data == null) {
+            if (isUploadingReceipt) showUploadReceiptPrompt()
+            return
         }
+
+        // Collect all selected URIs (multi-select uses clipData, single uses data)
+        val uris = mutableListOf<android.net.Uri>()
+        val clip = data.clipData
+        if (clip != null) {
+            for (i in 0 until clip.itemCount) uris.add(clip.getItemAt(i).uri)
+        } else {
+            data.data?.let { uris.add(it) }
+        }
+
+        if (uris.isEmpty()) {
+            if (isUploadingReceipt) showUploadReceiptPrompt()
+            return
+        }
+
+        isUploadingReceipt = false
+        val files = mutableListOf<Pair<ByteArray, String>>()
+        for (uri in uris) {
+            val mime = contentResolver.getType(uri) ?: "image/jpeg"
+            val bytes = runCatching { contentResolver.openInputStream(uri)?.readBytes() }.getOrNull()
+            if (bytes != null) files.add(Pair(bytes, mime))
+        }
+
+        if (files.isEmpty()) {
+            tvDetailStatus.setTextColor(android.graphics.Color.parseColor("#DC2626"))
+            tvDetailStatus.text = "無法讀取圖片，請重新選擇"
+            tvDetailStatus.visibility = View.VISIBLE
+            return
+        }
+        showReceiptPreviewDialog(uris, files)
     }
 
-    private fun showReceiptPreviewDialog(uri: Uri, fileBytes: ByteArray, mimeType: String) {
-        val imageView = ImageView(this).apply {
-            setImageURI(uri)
-            adjustViewBounds = true
-            maxHeight = dp(300)
-            scaleType = ImageView.ScaleType.FIT_CENTER
+    private fun showReceiptPreviewDialog(uris: List<android.net.Uri>, files: List<Pair<ByteArray, String>>) {
+        val scroll = android.widget.ScrollView(this).apply {
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT,
@@ -1105,24 +1121,48 @@ class BubbleActivity : Activity() {
         val container = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(8), dp(8), dp(8), 0)
-            addView(imageView)
         }
+        scroll.addView(container)
+
+        container.addView(TextView(this).apply {
+            text = "已選擇 ${files.size} 張圖片"
+            textSize = 13f
+            setTextColor(android.graphics.Color.parseColor("#374151"))
+            setPadding(0, 0, 0, dp(8))
+        })
+
+        uris.forEach { uri ->
+            container.addView(ImageView(this).apply {
+                setImageURI(uri)
+                adjustViewBounds = true
+                maxHeight = dp(200)
+                scaleType = ImageView.ScaleType.FIT_CENTER
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                ).also { it.bottomMargin = dp(8) }
+            })
+        }
+
         AlertDialog.Builder(this)
             .setTitle("確認凭證")
-            .setView(container)
+            .setView(scroll)
             .setCancelable(false)
             .setNegativeButton("重新選擇") { _, _ ->
-                val intent = Intent(Intent.ACTION_GET_CONTENT).apply { type = "image/*" }
+                val intent = Intent(Intent.ACTION_GET_CONTENT).apply {
+                    type = "image/*"
+                    putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true)
+                }
                 @Suppress("DEPRECATION")
                 startActivityForResult(intent, REQUEST_GALLERY)
             }
             .setPositiveButton("確認上傳") { _, _ ->
-                confirmOrderAfterUpload(fileBytes, mimeType)
+                confirmOrderAfterUpload(files)
             }
             .show()
     }
 
-    private fun confirmOrderAfterUpload(fileBytes: ByteArray, mimeType: String) {
+    private fun confirmOrderAfterUpload(files: List<Pair<ByteArray, String>>) {
         val token = prefs.getString("flutter.bubble_token", "") ?: ""
         val id = withdrawalId
         if (token.isEmpty()) {
@@ -1139,7 +1179,7 @@ class BubbleActivity : Activity() {
         tvDetailStatus.setTextColor(android.graphics.Color.parseColor("#6B7280"))
         tvDetailStatus.text = "上傳中..."
         tvDetailStatus.visibility = View.VISIBLE
-        callConfirmApiDetail(id, token, fileBytes, mimeType) { result ->
+        callConfirmApiDetail(id, token, files) { result ->
             btnComplete.isEnabled = !isExpired
             if (!result.success) {
                 tvDetailStatus.setTextColor(android.graphics.Color.parseColor("#DC2626"))
@@ -1171,7 +1211,7 @@ class BubbleActivity : Activity() {
         }
     }
 
-    private fun callConfirmApiDetail(id: Int, token: String, fileBytes: ByteArray? = null, mimeType: String = "image/jpeg", onResult: (ConfirmResult) -> Unit) {
+    private fun callConfirmApiDetail(id: Int, token: String, files: List<Pair<ByteArray, String>> = emptyList(), onResult: (ConfirmResult) -> Unit) {
         Thread {
             val result = runCatching {
                 val conn = URL("$apiBaseUrl/admin-withdraw/withdrawals/$id/confirm")
@@ -1185,24 +1225,26 @@ class BubbleActivity : Activity() {
                     readTimeout    = 30_000
                 }
 
-                if (fileBytes != null) {
+                if (files.isNotEmpty()) {
                     val boundary = "----BubbleBoundary${System.currentTimeMillis()}"
                     conn.setRequestProperty("Content-Type", "multipart/form-data; boundary=$boundary")
-                    val ext = when {
-                        mimeType.contains("png") -> "png"
-                        mimeType.contains("gif") -> "gif"
-                        mimeType.contains("webp") -> "webp"
-                        else -> "jpg"
-                    }
                     conn.outputStream.use { out ->
                         val CRLF = "\r\n"
                         fun writeLine(s: String) = out.write((s + CRLF).toByteArray(Charsets.UTF_8))
-                        writeLine("--$boundary")
-                        writeLine("Content-Disposition: form-data; name=\"proof\"; filename=\"proof.$ext\"")
-                        writeLine("Content-Type: $mimeType")
-                        writeLine("")
-                        out.write(fileBytes)
-                        writeLine("")
+                        files.forEachIndexed { index, (bytes, mime) ->
+                            val ext = when {
+                                mime.contains("png") -> "png"
+                                mime.contains("gif") -> "gif"
+                                mime.contains("webp") -> "webp"
+                                else -> "jpg"
+                            }
+                            writeLine("--$boundary")
+                            writeLine("Content-Disposition: form-data; name=\"proofs[]\"; filename=\"proof_$index.$ext\"")
+                            writeLine("Content-Type: $mime")
+                            writeLine("")
+                            out.write(bytes)
+                            writeLine("")
+                        }
                         writeLine("--$boundary--")
                     }
                 } else {
