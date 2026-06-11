@@ -27,13 +27,13 @@ android {
 
         create("ffPayBubble") {
             dimension = "app"
-            applicationId = "com.ffpay.bankinfomrm.bubble"
+            applicationId = "com.ffpay.bankinfomrm"
             resValue("string", "app_name", "FF Pay")
         }
 
         create("ffPayDetails") {
             dimension = "app"
-            applicationId = "com.ffpay.bankinfomrm.details"
+            applicationId = "com.ffpay.bankinfomrm"
             resValue("string", "app_name", "FF Pay")
         }
     }

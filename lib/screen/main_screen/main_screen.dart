@@ -15,6 +15,7 @@ class MainScreen extends StatefulWidget {
 class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   String appVersion = '';
   MainController? controller;
+  Timer? _autoRefreshTimer;
 
   Future<void> _onTapHistory() async {
     await AppNavigator.pushNamed(
@@ -38,11 +39,20 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
       if (AppConfig.instance.bubbleOnTap) {
         _checkBubblePermission();
       }
+      _startAutoRefresh();
+    });
+  }
+
+  void _startAutoRefresh() {
+    _autoRefreshTimer?.cancel();
+    _autoRefreshTimer = Timer.periodic(const Duration(minutes: 1), (_) {
+      if (mounted) controller?.onRefresh();
     });
   }
 
   @override
   void dispose() {
+    _autoRefreshTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }

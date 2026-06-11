@@ -9,7 +9,7 @@ Future<void> main() async {
     apiBaseUrl: 'https://staging.easypayapi.online/api',
     apiTrialBaseUrl: 'https://staging.easypayapi.online/api',
     logoAsset: 'assets/easy_pay/icon.png',
-    bubbleOnTap: false,
+    bubbleOnTap: true,
     detailsOnTap: true,
   );
 

@@ -9,7 +9,7 @@ Future<void> main() async {
     apiBaseUrl: 'https://ezchoya.com/api',
     apiTrialBaseUrl: 'https://staging.ezchoya.com/api',
     logoAsset: 'assets/easy_pay/icon.png',
-    bubbleOnTap: false,
+    bubbleOnTap: true,
     detailsOnTap: true,
   );
 
