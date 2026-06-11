@@ -1,5 +1,7 @@
+import 'package:easy_pay_bank_infomrm/configs/app_config.dart';
 import 'package:easy_pay_bank_infomrm/controller/main_controller.dart';
 import 'package:easy_pay_bank_infomrm/controller/session_controller.dart';
+import 'package:easy_pay_bank_infomrm/services/notification/bubble_service.dart';
 
 import '../../imports.dart';
 
@@ -33,6 +35,9 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
       context.read<SessionController>().start(
         customTimeout: const Duration(minutes: 15),
       );
+      if (AppConfig.instance.bubbleOnTap) {
+        _checkBubblePermission();
+      }
     });
   }
 
@@ -57,6 +62,67 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     setState(() {
       appVersion = 'Version ${packageInfo.version}+${packageInfo.buildNumber}';
     });
+  }
+
+  Future<void> _checkBubblePermission() async {
+    final bool allowed = await BubbleService.checkPermission();
+    if (allowed) return;
+    if (!mounted) return;
+
+    await Future.delayed(const Duration(milliseconds: 600));
+    if (!mounted) return;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20).r,
+        ),
+        title: Row(
+          children: [
+            Icon(
+              Icons.bubble_chart_rounded,
+              color: AppColors.primaryNoContextColor,
+              size: 22.sp,
+            ),
+            8.widthSpace,
+            AppText(
+              '开启气泡通知',
+              fontSize: 17,
+              fontWeight: FontWeight.w700,
+              color: AppColors.primaryTextColor,
+            ),
+          ],
+        ),
+        content: AppText(
+          '开启气泡后，点击订单时订单信息会以悬浮气泡方式显示，方便快速复制。\n\n请在下一页找到「气泡」选项并开启。',
+          fontSize: 14,
+          color: AppColors.secondaryTextColor,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: AppText(
+              '稍后',
+              fontSize: 14,
+              color: AppColors.secondaryTextColor,
+            ),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.of(ctx).pop();
+              BubbleService.openSettings();
+            },
+            child: AppText(
+              '去开启',
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              color: AppColors.primaryNoContextColor,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _showLogoutDialog() async {

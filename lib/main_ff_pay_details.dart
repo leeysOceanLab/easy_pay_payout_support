@@ -4,11 +4,13 @@ import 'main.dart';
 
 Future<void> main() async {
   const config = AppConfig(
-    flavor: AppFlavor.easyPay,
+    flavor: AppFlavor.ffPayDetails,
     appName: 'FF Pay',
-    apiBaseUrl: 'https://ezchoya.com/api',
-    apiTrialBaseUrl: 'https://staging.ezchoya.com/api',
+    apiBaseUrl: 'https://staging.easypayapi.online/api',
+    apiTrialBaseUrl: 'https://staging.easypayapi.online/api',
     logoAsset: 'assets/easy_pay/icon.png',
+    bubbleOnTap: false,
+    detailsOnTap: true,
   );
 
   await bootstrap(config);

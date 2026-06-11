@@ -13,22 +13,28 @@ android {
     flavorDimensions += "app"
 
     productFlavors {
-         create("staging") {
+        create("staging") {
             dimension = "app"
-            applicationId = "com.easypay.bankinfomrm.staging"
-            resValue("string", "app_name", "EZ Pay Staging")
-        }
-        
-        create("easyPay") {
-            dimension = "app"
-            applicationId = "com.easypay.bankinfomrm"
-            resValue("string", "app_name", "EZ Pay 辅助系统")
+            applicationId = "com.ffpay.bankinfomrm.staging"
+            resValue("string", "app_name", "FF Pay Staging")
         }
 
-        create("threeSixty") {
+        create("easyPay") {
             dimension = "app"
-            applicationId = "com.easypay.bankinfomrm.threesixty"
-            resValue("string", "app_name", "360 辅助系统")
+            applicationId = "com.ffpay.bankinfomrm"
+            resValue("string", "app_name", "FF Pay")
+        }
+
+        create("ffPayBubble") {
+            dimension = "app"
+            applicationId = "com.ffpay.bankinfomrm.bubble"
+            resValue("string", "app_name", "FF Pay")
+        }
+
+        create("ffPayDetails") {
+            dimension = "app"
+            applicationId = "com.ffpay.bankinfomrm.details"
+            resValue("string", "app_name", "FF Pay")
         }
     }
 

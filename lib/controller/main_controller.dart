@@ -127,31 +127,36 @@ class MainController with ChangeNotifier {
     final d = details!;
     final bool isKuaizhuan = (d.type ?? '').toLowerCase() == 'kuaizhuan';
 
-    await BubbleService.dismissAll();
-    await BubbleService.showBubble(
-      withdrawalId: d.id ?? 0,
-      txId: d.txId ?? '',
-      isKuaizhuan: isKuaizhuan,
-      amount: _sanitizeAmount(d.withdrawAmount),
-      name: d.holderName ?? d.accountName ?? '',
-      accountNumber: d.accountNumber ?? '',
-      mobile: d.mobileNo ?? '',
-      bankName: d.bankName ?? '',
-      createdAt: d.createdAt ?? '',
-      lockExpiresAt: d.lockExpiresAt ?? '',
-      token: await SecureStorage().readLoginToken() ?? '',
-      apiBaseUrl: AppConfig.instance.apiBaseUrl,
-    );
+    if (AppConfig.instance.bubbleOnTap) {
+      await BubbleService.dismissAll();
+      await BubbleService.showBubble(
+        withdrawalId: d.id ?? 0,
+        txId: d.txId ?? '',
+        isKuaizhuan: isKuaizhuan,
+        amount: _sanitizeAmount(d.withdrawAmount),
+        name: d.holderName ?? d.accountName ?? '',
+        accountNumber: d.accountNumber ?? '',
+        mobile: d.mobileNo ?? '',
+        bankName: d.bankName ?? '',
+        createdAt: d.createdAt ?? '',
+        lockExpiresAt: d.lockExpiresAt ?? '',
+        token: await SecureStorage().readLoginToken() ?? '',
+        apiBaseUrl: AppConfig.instance.apiBaseUrl,
+      );
+    }
 
-    await AppNavigator.pushNamed(
-      context,
-      RouteName.withdrawalDetails,
-      arguments: {
-        "id": d.id ?? 0,
-        "details": d,
-        "lockedByMe": lockedByMe ?? true,
-      },
-    );
+    if (AppConfig.instance.detailsOnTap) {
+      // ignore: use_build_context_synchronously
+      await AppNavigator.pushNamed(
+        context,
+        RouteName.withdrawalDetails,
+        arguments: {
+          "id": d.id ?? 0,
+          "details": d,
+          "lockedByMe": lockedByMe ?? true,
+        },
+      );
+    }
 
     onRefresh();
   }
