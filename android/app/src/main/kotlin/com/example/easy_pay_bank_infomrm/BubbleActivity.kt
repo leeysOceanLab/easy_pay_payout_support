@@ -111,6 +111,7 @@ class BubbleActivity : Activity() {
     private lateinit var tvListRefresh: TextView
 
     private var isUploadingReceipt = false
+    private var isConfirmingOrder = false
     private var listAutoRefreshRunnable: Runnable? = null
     private var loadingDialog: AlertDialog? = null
 
@@ -1207,6 +1208,7 @@ class BubbleActivity : Activity() {
             })
         }
 
+        var submitted = false
         AlertDialog.Builder(this)
             .setTitle("確認凭證")
             .setView(scroll)
@@ -1220,21 +1222,28 @@ class BubbleActivity : Activity() {
                 startActivityForResult(intent, REQUEST_GALLERY)
             }
             .setPositiveButton("確認上傳") { _, _ ->
-                confirmOrderAfterUpload(files)
+                if (!submitted) {
+                    submitted = true
+                    confirmOrderAfterUpload(files)
+                }
             }
             .show()
     }
 
     private fun confirmOrderAfterUpload(files: List<Pair<ByteArray, String>>) {
+        if (isConfirmingOrder) return
+        isConfirmingOrder = true
         val token = prefs.getString("flutter.bubble_token", "") ?: ""
         val id = withdrawalId
         if (token.isEmpty()) {
+            isConfirmingOrder = false
             tvDetailStatus.setTextColor(android.graphics.Color.parseColor("#DC2626"))
             tvDetailStatus.text = "登入已過期，請重新登入"
             tvDetailStatus.visibility = View.VISIBLE
             return
         }
         if (id <= 0) {
+            isConfirmingOrder = false
             releaseAndShowList()
             return
         }
@@ -1242,6 +1251,7 @@ class BubbleActivity : Activity() {
         tvDetailStatus.visibility = View.GONE
         showLoadingProgress("上傳中...")
         callConfirmApiDetail(id, token, files) { result ->
+            isConfirmingOrder = false
             dismissLoadingProgress()
             btnComplete.isEnabled = !isExpired
             if (!result.success) {
@@ -1258,15 +1268,22 @@ class BubbleActivity : Activity() {
     private fun handleAfterComplete(result: ConfirmResult) {
         val token = prefs.getString("flutter.bubble_token", "") ?: ""
         if (result.nextId > 0) {
+            var actionTaken = false
             AlertDialog.Builder(this)
                 .setTitle("下一個訂單")
                 .setMessage("訂單 ${result.nextTxId}（金額：${formatAmount(result.nextAmount)}）已分配給您。")
                 .setCancelable(false)
                 .setNegativeButton("結束") { _, _ ->
-                    callCancelApiById(result.nextId, token) { showOrderList() }
+                    if (!actionTaken) {
+                        actionTaken = true
+                        callReleaseApiById(result.nextId, token) { showOrderList() }
+                    }
                 }
                 .setPositiveButton("繼續") { _, _ ->
-                    lockAndShowOrder(result.nextId, token)
+                    if (!actionTaken) {
+                        actionTaken = true
+                        lockAndShowOrder(result.nextId, token)
+                    }
                 }
                 .show()
         } else {
@@ -1363,10 +1380,10 @@ class BubbleActivity : Activity() {
         }.start()
     }
 
-    private fun callCancelApiById(id: Int, token: String, onDone: () -> Unit) {
+    private fun callReleaseApiById(id: Int, token: String, onDone: () -> Unit) {
         Thread {
             runCatching {
-                val conn = URL("$apiBaseUrl/admin-withdraw/withdrawals/$id/cancel")
+                val conn = URL("$apiBaseUrl/admin-withdraw/withdrawals/$id/release")
                     .openConnection() as HttpURLConnection
                 conn.apply {
                     requestMethod = "POST"
