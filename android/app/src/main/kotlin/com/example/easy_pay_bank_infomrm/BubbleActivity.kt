@@ -156,6 +156,12 @@ class BubbleActivity : Activity() {
 
     override fun onResume() {
         super.onResume()
+        // If process was killed mid-upload and recreated, clear any stuck loading state
+        if (isConfirmingOrder) {
+            isConfirmingOrder = false
+            dismissLoadingProgress()
+            btnComplete.isEnabled = !isExpired
+        }
     }
 
     override fun onPause() {
@@ -342,7 +348,7 @@ class BubbleActivity : Activity() {
         val gen = ++listGeneration
         Thread {
             val result   = runCatching { fetchPendingListSync(token, 1) }
-                .getOrDefault(PendingResult(emptyList(), emptyList(), 1))
+                .getOrDefault(PendingResult(emptyList(), emptyList(), emptyList(), 1))
             val myLocked = runCatching { fetchMyLockedSync(token) }.getOrElse { null }
 
             val pendingIds = result.items.map { it.id }.toSet()
@@ -357,7 +363,7 @@ class BubbleActivity : Activity() {
                 listLastPage = result.lastPage
                 tvListLoading.visibility = View.GONE
                 tvListRefresh.isEnabled  = true
-                val totalCount = result.priorityItems.size + mergedList.size
+                val totalCount = result.priorityItems.size + result.manualItems.size + mergedList.size
                 if (totalCount == 0) {
                     tvListEmpty.visibility = View.VISIBLE
                 } else {
@@ -367,9 +373,14 @@ class BubbleActivity : Activity() {
                         listContainer.addView(buildSectionHeader("📌  置頂優先訂單"))
                         result.priorityItems.forEach { item -> listContainer.addView(buildListItem(item, token)) }
                     }
+                    // Manual items
+                    if (result.manualItems.isNotEmpty()) {
+                        listContainer.addView(buildSectionHeader("📋  手動內部申請單"))
+                        result.manualItems.forEach { item -> listContainer.addView(buildListItem(item, token)) }
+                    }
                     // Normal items
                     if (mergedList.isNotEmpty()) {
-                        if (result.priorityItems.isNotEmpty()) {
+                        if (result.priorityItems.isNotEmpty() || result.manualItems.isNotEmpty()) {
                             listContainer.addView(buildSectionHeader("其他訂單"))
                         }
                         mergedList.forEach { item -> listContainer.addView(buildListItem(item, token)) }
@@ -404,7 +415,7 @@ class BubbleActivity : Activity() {
         val nextPage = listPage + 1
         Thread {
             val result = runCatching { fetchPendingListSync(token, nextPage) }
-                .getOrDefault(PendingResult(emptyList(), emptyList(), listLastPage))
+                .getOrDefault(PendingResult(emptyList(), emptyList(), emptyList(), listLastPage))
             handler.post {
                 listPage     = nextPage
                 listLastPage = result.lastPage
@@ -427,11 +438,13 @@ class BubbleActivity : Activity() {
         val isLocked: Boolean = false,
         val isPriority: Boolean = false,
         val priorityValue: Int = 0,
+        val isManual: Boolean = false,
     )
 
     private data class PendingResult(
         val items: List<OrderItem>,
         val priorityItems: List<OrderItem>,
+        val manualItems: List<OrderItem>,
         val lastPage: Int,
     )
 
@@ -455,8 +468,8 @@ class BubbleActivity : Activity() {
             readTimeout    = 10_000
         }
         val code = conn.responseCode
-        if (code == 401) { conn.disconnect(); on401(); return PendingResult(emptyList(), emptyList(), page) }
-        if (code !in 200..299) { conn.disconnect(); return PendingResult(emptyList(), emptyList(), page) }
+        if (code == 401) { conn.disconnect(); on401(); return PendingResult(emptyList(), emptyList(), emptyList(), page) }
+        if (code !in 200..299) { conn.disconnect(); return PendingResult(emptyList(), emptyList(), emptyList(), page) }
         val body = BufferedReader(InputStreamReader(conn.inputStream)).readText()
         conn.disconnect()
         val root = JSONObject(body).optJSONObject("data")
@@ -464,9 +477,10 @@ class BubbleActivity : Activity() {
             root?.optJSONObject("pagination")?.optInt("last_page", 1) ?: 1
         }.getOrDefault(1)
         val priorityItems = parsePriorityItems(body)
-        val priorityIds = priorityItems.map { it.id }.toSet()
-        val normalItems = parseWithdrawals(body).filter { it.id !in priorityIds }
-        return PendingResult(items = normalItems, priorityItems = priorityItems, lastPage = lastPage)
+        val manualItems = parseManualItems(body)
+        val excludedIds = (priorityItems.map { it.id } + manualItems.map { it.id }).toSet()
+        val normalItems = parseWithdrawals(body).filter { it.id !in excludedIds }
+        return PendingResult(items = normalItems, priorityItems = priorityItems, manualItems = manualItems, lastPage = lastPage)
     }
 
     private fun fetchMyLockedSync(token: String): OrderItem? {
@@ -537,6 +551,34 @@ class BubbleActivity : Activity() {
                     isLocked      = o.optBoolean("is_locked", false),
                     isPriority    = true,
                     priorityValue = o.optInt("priority_value", 0),
+                )
+            )
+        }
+        return list
+    }
+
+    private fun parseManualItems(json: String): List<OrderItem> {
+        val arr: JSONArray = JSONObject(json)
+            .optJSONObject("data")
+            ?.optJSONArray("manual_withdrawals") ?: return emptyList()
+        val list = mutableListOf<OrderItem>()
+        for (i in 0 until arr.length()) {
+            val o = arr.getJSONObject(i)
+            val rawAmount = o.safeString("withdraw_amount", fallback = "")
+                .replace("HKD", "").replace("hkd", "")
+                .replace("RM", "").replace("rm", "")
+                .replace(",", "").trim()
+            list.add(
+                OrderItem(
+                    id         = o.optInt("id", 0),
+                    txId       = o.safeString("tx_id"),
+                    amount     = rawAmount,
+                    name       = o.safeString("holder_name", "account_name"),
+                    type       = o.safeString("type", fallback = ""),
+                    createdAt  = o.safeString("created_at", fallback = ""),
+                    lockedByMe = o.optBoolean("locked_by_me", false),
+                    isLocked   = o.optBoolean("is_locked", false),
+                    isManual   = true,
                 )
             )
         }
@@ -623,6 +665,24 @@ class BubbleActivity : Activity() {
             }
             banner.addView(tvPin)
             banner.addView(tvRank)
+            card.addView(banner)
+        }
+
+        // Manual banner strip
+        if (item.isManual) {
+            val banner = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity     = android.view.Gravity.CENTER_VERTICAL
+                setBackgroundColor(Color.parseColor("#F97316"))
+                setPadding(dp(12), dp(5), dp(12), dp(5))
+            }
+            val tvLabel = TextView(this).apply {
+                text     = "📋  手動內部申請單"
+                textSize = 11f
+                setTextColor(Color.WHITE)
+                typeface = android.graphics.Typeface.DEFAULT_BOLD
+            }
+            banner.addView(tvLabel)
             card.addView(banner)
         }
 
@@ -1205,6 +1265,7 @@ class BubbleActivity : Activity() {
                     LinearLayout.LayoutParams.MATCH_PARENT,
                     LinearLayout.LayoutParams.WRAP_CONTENT,
                 ).also { it.bottomMargin = dp(8) }
+                setOnClickListener { showFullScreenImageDialog(uri) }
             })
         }
 
@@ -1228,6 +1289,32 @@ class BubbleActivity : Activity() {
                 }
             }
             .show()
+    }
+
+    private fun showFullScreenImageDialog(uri: Uri) {
+        val imageView = ImageView(this).apply {
+            setImageURI(uri)
+            scaleType = ImageView.ScaleType.FIT_CENTER
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.MATCH_PARENT,
+            )
+            setBackgroundColor(android.graphics.Color.BLACK)
+        }
+
+        val dialog = AlertDialog.Builder(this)
+            .setView(imageView)
+            .setPositiveButton("關閉") { d, _ -> d.dismiss() }
+            .create()
+
+        dialog.window?.apply {
+            setLayout(
+                android.view.WindowManager.LayoutParams.MATCH_PARENT,
+                android.view.WindowManager.LayoutParams.MATCH_PARENT,
+            )
+            setBackgroundDrawable(ColorDrawable(android.graphics.Color.BLACK))
+        }
+        dialog.show()
     }
 
     private fun confirmOrderAfterUpload(files: List<Pair<ByteArray, String>>) {
@@ -1370,6 +1457,8 @@ class BubbleActivity : Activity() {
                     onResult(result)
                 } catch (e: Exception) {
                     try {
+                        dismissLoadingProgress()
+                        isConfirmingOrder = false
                         tvDetailStatus.setTextColor(android.graphics.Color.parseColor("#DC2626"))
                         tvDetailStatus.text = "錯誤: ${e.message?.take(80) ?: "未知錯誤"}"
                         tvDetailStatus.visibility = View.VISIBLE

@@ -327,7 +327,8 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
                     onRefresh: mainController.onRefresh,
                     onLoading: mainController.onLoading,
                     child: mainController.withdrawalList.isEmpty &&
-                            mainController.priorityList.isEmpty
+                            mainController.priorityList.isEmpty &&
+                            mainController.manualWithdrawalList.isEmpty
                         ? _buildEmptyView()
                         : ListView(
                             padding: const EdgeInsets.fromLTRB(
@@ -368,6 +369,39 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
                                         item,
                                         mainController,
                                         rank: index + 1,
+                                      ),
+                                    );
+                                  },
+                                ),
+                                20.heightSpace,
+                              ],
+                              if (mainController.manualWithdrawalList.isNotEmpty) ...[
+                                Row(
+                                  children: [
+                                    Icon(
+                                      Icons.assignment_rounded,
+                                      size: 16.sp,
+                                      color: const Color(0xFFF97316),
+                                    ),
+                                    6.widthSpace,
+                                    AppText(
+                                      '手動內部申請單',
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w600,
+                                      color: const Color(0xFFF97316),
+                                    ),
+                                  ],
+                                ),
+                                12.heightSpace,
+                                ...List.generate(
+                                  mainController.manualWithdrawalList.length,
+                                  (index) {
+                                    final item = mainController.manualWithdrawalList[index];
+                                    return Padding(
+                                      padding: const EdgeInsets.only(bottom: 12).r,
+                                      child: _buildManualTransactionItem(
+                                        item,
+                                        mainController,
                                       ),
                                     );
                                   },
@@ -533,6 +567,120 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
                       fontWeight: FontWeight.w700,
                       color: AppColors.whiteColor,
                     ),
+                  ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(8, 8, 8, 8).r,
+              child: Column(
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            AppText(
+                              _typeText(item),
+                              fontSize: kFont14,
+                              fontWeight: FontWeight.w600,
+                              color: lockedByOther
+                                  ? AppColors.listingDisabledTextColor
+                                  : AppColors.primaryTextColor,
+                            ),
+                            10.heightSpace,
+                            AppText(
+                              item.txId ?? '-',
+                              fontSize: kFont16,
+                              fontWeight: FontWeight.w800,
+                              color: lockedByOther
+                                  ? AppColors.listingDisabledTitleColor
+                                  : AppColors.primaryTextColor,
+                            ),
+                          ],
+                        ),
+                      ),
+                      12.widthSpace,
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          _buildStatusBadge(
+                            isLocked: isLocked,
+                            lockedByMe: lockedByMe,
+                            lockedByOther: lockedByOther,
+                          ),
+                          _buildAmountDisplay(item.withdrawAmount),
+                        ],
+                      ),
+                    ],
+                  ),
+                  5.heightSpace,
+                  _buildWithdrawalExtraInfoSection(item),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildManualTransactionItem(
+    WithdrawalOrderModel item,
+    MainController mainController,
+  ) {
+    const Color manualColor = Color(0xFFF97316);
+    final bool isLocked = item.isLocked ?? false;
+    final bool lockedByMe = item.lockedByMe ?? false;
+    final bool lockedByOther = isLocked && !lockedByMe;
+    final bool canClick = !lockedByOther;
+
+    return InkWellWrapper(
+      onTap: canClick
+          ? () => mainController.goToWithdrawalDetails(
+                item.id!,
+                detailsItem: null,
+                lockedByMe: lockedByMe,
+              )
+          : null,
+      child: Container(
+        width: double.infinity,
+        decoration: BoxDecoration(
+          color: AppColors.whiteColor,
+          borderRadius: BorderRadius.circular(18).r,
+          border: Border.all(color: manualColor.withValues(alpha: 0.5)),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.blackColor.wOpacity(0.03),
+              blurRadius: 10,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8).r,
+              decoration: BoxDecoration(
+                color: manualColor,
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(17).r,
+                  topRight: Radius.circular(17).r,
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.assignment_rounded, color: AppColors.whiteColor, size: 13.sp),
+                  5.widthSpace,
+                  AppText(
+                    '手動內部申請單',
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.whiteColor,
                   ),
                 ],
               ),

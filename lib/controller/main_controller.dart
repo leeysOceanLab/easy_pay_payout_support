@@ -14,6 +14,7 @@ class MainController with ChangeNotifier {
   FocusNode searchFocusNode = FocusNode();
   dynamic filters = {};
   List<WithdrawalOrderModel> priorityList = [];
+  List<WithdrawalOrderModel> manualWithdrawalList = [];
   List<WithdrawalOrderModel> withdrawalList = [];
   WithdrawalDetailsModel withdrawalDetails = WithdrawalDetailsModel();
   int page = 1;
@@ -44,6 +45,7 @@ class MainController with ChangeNotifier {
     isLoading = true;
     page = 1;
     priorityList = [];
+    manualWithdrawalList = [];
     withdrawalList = [];
     update();
     await getWithdrawalList();
@@ -184,15 +186,25 @@ class MainController with ChangeNotifier {
                 .toList()
               ..sort((a, b) => (a.priorityValue ?? 0).compareTo(b.priorityValue ?? 0));
           }
+
+          final rawManual = response.data['manual_withdrawals'];
+          if (rawManual is List) {
+            manualWithdrawalList = rawManual
+                .map((e) => WithdrawalOrderModel.fromJson(Map<String, dynamic>.from(e)))
+                .toList();
+          }
         }
 
-        final priorityIds = priorityList.map((e) => e.id).toSet();
+        final excludedIds = {
+          ...priorityList.map((e) => e.id),
+          ...manualWithdrawalList.map((e) => e.id),
+        };
         final rawWithdrawals = response.data['withdrawals'];
         if (rawWithdrawals is List) {
           withdrawalList.addAll(
             rawWithdrawals
                 .map((e) => WithdrawalOrderModel.fromJson(Map<String, dynamic>.from(e)))
-                .where((e) => !priorityIds.contains(e.id))
+                .where((e) => !excludedIds.contains(e.id))
                 .toList(),
           );
         }
