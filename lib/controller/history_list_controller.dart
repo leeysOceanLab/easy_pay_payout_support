@@ -29,6 +29,10 @@ class HistoryListController with ChangeNotifier {
   }) async {
     selectedDateFrom = dateFrom;
     selectedDateTo = dateTo;
+    if (pageType == HistoryTabType.history) {
+      await SharedPrefs.instance.writeString(kHistoryDateFrom, dateFrom.toIso8601String());
+      await SharedPrefs.instance.writeString(kHistoryDateTo, dateTo.toIso8601String());
+    }
     update();
 
     onRefresh();
@@ -37,6 +41,10 @@ class HistoryListController with ChangeNotifier {
   Future<void> clearDateRange() async {
     selectedDateFrom = null;
     selectedDateTo = null;
+    if (pageType == HistoryTabType.history) {
+      await SharedPrefs.instance.remove(kHistoryDateFrom);
+      await SharedPrefs.instance.remove(kHistoryDateTo);
+    }
     update();
 
     onRefresh();
@@ -50,6 +58,12 @@ class HistoryListController with ChangeNotifier {
 
   void setInit(HistoryTabType type) async {
     pageType = type;
+    if (type == HistoryTabType.history) {
+      final String? savedFrom = SharedPrefs.instance.readString(kHistoryDateFrom);
+      final String? savedTo = SharedPrefs.instance.readString(kHistoryDateTo);
+      if (savedFrom != null) selectedDateFrom = DateTime.tryParse(savedFrom);
+      if (savedTo != null) selectedDateTo = DateTime.tryParse(savedTo);
+    }
     update();
     onRefresh();
   }

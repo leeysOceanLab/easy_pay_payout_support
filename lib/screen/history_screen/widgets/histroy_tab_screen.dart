@@ -141,12 +141,16 @@ class _HistoryTabContentState extends State<HistoryTabContent> {
   Widget _buildDateRangePicker(HistoryListController controller) {
     return InkWellWrapper(
       onTap: () async {
+        final DateTime today = DateTime.now();
+        final DateTime startFirst = DateTime(today.year, today.month, today.day).subtract(const Duration(days: 30));
+        final DateTime startInitial = controller.selectedDateFrom != null
+            ? (controller.selectedDateFrom!.isBefore(startFirst) ? startFirst : controller.selectedDateFrom!)
+            : DateTime.now().subtract(const Duration(days: 7));
+
         final List<DateTime>? results = await showOmniDateTimeRangePicker(
           context: context,
-          startInitialDate:
-              controller.selectedDateFrom ??
-              DateTime.now().subtract(const Duration(days: 7)),
-          startFirstDate: DateTime.now().subtract(const Duration(days: 30)),
+          startInitialDate: startInitial,
+          startFirstDate: startFirst,
           startLastDate: DateTime.now().add(const Duration(days: 365 * 2)),
           endInitialDate: controller.selectedDateTo ?? DateTime.now(),
           endFirstDate: DateTime(2024, 1, 1),
