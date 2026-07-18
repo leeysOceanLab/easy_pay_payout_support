@@ -280,6 +280,49 @@ class Api {
     );
   }
 
+  /// UU Pay Members
+  Future<void> getUUMembers({
+    required Function(ApiResponseModel) onSuccess,
+    bool showLoader = false,
+    Function(String)? onError,
+  }) async {
+    await HttpClientCustom.httpGet(
+      showLoader: showLoader,
+      apiUrl: apiUrl,
+      endPoint: kUUMembers,
+      withBearer: true,
+      onSuccess: onSuccess,
+      onError: (error) {
+        if (onError != null) {
+          onError(error);
+        }
+      },
+    );
+  }
+
+  /// Activate UU Pay Member
+  Future<void> activateUUMember({
+    required int memberId,
+    required Function(ApiResponseModel) onSuccess,
+    bool showLoader = false,
+    Function(String)? onError,
+  }) async {
+    await HttpClientCustom.httpPost(
+      showLoader: showLoader,
+      apiUrl: apiUrl,
+      endPoint: kUUMemberActivate,
+      withBearer: true,
+      params: {"member_id": memberId},
+      onSuccess: onSuccess,
+      onError: (error) {
+        ToastHelper.showToast(error);
+        if (onError != null) {
+          onError(error);
+        }
+      },
+    );
+  }
+
   /// Copy Log List by ID
   Future<void> copyLogListById({
     required int widthdrawalId,

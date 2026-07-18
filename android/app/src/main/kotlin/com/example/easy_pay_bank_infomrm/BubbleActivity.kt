@@ -110,6 +110,11 @@ class BubbleActivity : Activity() {
     private lateinit var tvListEmpty: TextView
     private lateinit var tvListRefresh: TextView
 
+    // ── UUPay account selector (on the list screen) ─────────────────────────────
+    private lateinit var rowUUAccount: LinearLayout
+    private lateinit var tvUUAccountName: TextView
+    private var uuMembers: List<UUMember> = emptyList()
+
     private var isUploadingReceipt = false
     private var isConfirmingOrder = false
     private var listAutoRefreshRunnable: Runnable? = null
@@ -152,6 +157,7 @@ class BubbleActivity : Activity() {
         bindViews()
         registerUpdateReceiver()
         refreshFromPrefs()
+        loadUUMembers()
     }
 
     override fun onResume() {
@@ -216,6 +222,10 @@ class BubbleActivity : Activity() {
         tvListRefresh    = findViewById(R.id.tvListRefresh)
         tvListRefresh.setOnClickListener { showOrderList() }
 
+        rowUUAccount    = findViewById(R.id.rowUUAccount)
+        tvUUAccountName = findViewById(R.id.tvUUAccountName)
+        rowUUAccount.setOnClickListener { showUUMemberPicker() }
+
         // Login screen
         layoutLogin      = findViewById(R.id.layoutLogin)
         btnOpenFlutter   = findViewById(R.id.btnOpenFlutter)
@@ -223,7 +233,7 @@ class BubbleActivity : Activity() {
         btnOpenFlutter.setOnClickListener { openFlutterLogin() }
 
         btnIncomplete.setOnClickListener {
-            AlertDialog.Builder(this)
+            alertDialogBuilder()
                 .setTitle("有問題")
                 .setMessage("確定要將此訂單標記為有問題嗎？")
                 .setNegativeButton("取消") { d, _ -> d.dismiss() }
@@ -335,6 +345,7 @@ class BubbleActivity : Activity() {
     private fun showOrderList() {
         stopCountdown()
         showListScreen()
+        loadUUMembers()
         listContainer.removeAllViews()
         loadMoreButton = null
         tvListEmpty.visibility    = View.GONE
@@ -455,6 +466,14 @@ class BubbleActivity : Activity() {
         val nextAmount: String = "",
         val nextName: String = "",
         val errorMessage: String = "",
+    )
+
+    private data class UUMember(
+        val id: Int,
+        val name: String,
+        val bank: String,
+        val accountNumber: String,
+        val isActive: Boolean,
     )
 
     private fun fetchPendingListSync(token: String, page: Int = 1): PendingResult {
@@ -1045,7 +1064,7 @@ class BubbleActivity : Activity() {
         if (value.isEmpty() || value == "—") return
         val lastTime = lastCopiedTime(fieldKey)
         if (lastTime != null) {
-            AlertDialog.Builder(this)
+            alertDialogBuilder()
                 .setTitle("再次複製？")
                 .setMessage("你已複製過「$label」，確定要再次複製嗎？\n上次複製：$lastTime")
                 .setNegativeButton("取消") { d, _ -> d.dismiss() }
@@ -1108,7 +1127,7 @@ class BubbleActivity : Activity() {
         }
         layout.addView(spinner)
         layout.addView(tv)
-        loadingDialog = AlertDialog.Builder(this)
+        loadingDialog = alertDialogBuilder()
             .setView(layout)
             .setCancelable(false)
             .create()
@@ -1176,7 +1195,7 @@ class BubbleActivity : Activity() {
 
     private fun showUploadReceiptPrompt() {
         isUploadingReceipt = true
-        AlertDialog.Builder(this)
+        alertDialogBuilder()
             .setTitle("上傳轉賬憑證")
             .setMessage("請上傳轉賬截圖以確認付款完成（可多選）")
             .setCancelable(false)
@@ -1270,7 +1289,7 @@ class BubbleActivity : Activity() {
         }
 
         var submitted = false
-        AlertDialog.Builder(this)
+        alertDialogBuilder()
             .setTitle("確認凭證")
             .setView(scroll)
             .setCancelable(false)
@@ -1302,7 +1321,7 @@ class BubbleActivity : Activity() {
             setBackgroundColor(android.graphics.Color.BLACK)
         }
 
-        val dialog = AlertDialog.Builder(this)
+        val dialog = alertDialogBuilder()
             .setView(imageView)
             .setPositiveButton("關閉") { d, _ -> d.dismiss() }
             .create()
@@ -1356,7 +1375,7 @@ class BubbleActivity : Activity() {
         val token = prefs.getString("flutter.bubble_token", "") ?: ""
         if (result.nextId > 0) {
             var actionTaken = false
-            AlertDialog.Builder(this)
+            alertDialogBuilder()
                 .setTitle("下一個訂單")
                 .setMessage("訂單 ${result.nextTxId}（金額：${formatAmount(result.nextAmount)}）已分配給您。")
                 .setCancelable(false)
@@ -1492,7 +1511,7 @@ class BubbleActivity : Activity() {
 
     private fun showExpiredDialog() {
         if (isFinishing) return
-        AlertDialog.Builder(this)
+        alertDialogBuilder()
             .setTitle("鎖定已過期")
             .setMessage("此訂單的鎖定時間已到期。")
             .setCancelable(false)
@@ -1539,6 +1558,174 @@ class BubbleActivity : Activity() {
         }.start()
     }
 
+    // ── UUPay account selector ───────────────────────────────────────────────────
+
+    private fun loadUUMembers() {
+        val token = prefs.getString("flutter.bubble_token", "") ?: ""
+        if (token.isEmpty()) return
+        Thread {
+            val members = runCatching { fetchUUMembersSync(token) }.getOrDefault(emptyList())
+            handler.post {
+                uuMembers = members
+                updateUUAccountLabel()
+            }
+        }.start()
+    }
+
+    private fun fetchUUMembersSync(token: String): List<UUMember> {
+        val conn = URL("$apiBaseUrl/admin-withdraw/uu-members")
+            .openConnection() as HttpURLConnection
+        conn.apply {
+            requestMethod = "GET"
+            setRequestProperty("Authorization", "Bearer $token")
+            setRequestProperty("Accept", "application/json")
+            connectTimeout = 10_000
+            readTimeout    = 10_000
+        }
+        val code = conn.responseCode
+        if (code == 401) { conn.disconnect(); on401(); return emptyList() }
+        if (code !in 200..299) { conn.disconnect(); return emptyList() }
+        val body = BufferedReader(InputStreamReader(conn.inputStream)).readText()
+        conn.disconnect()
+        val arr: JSONArray = JSONObject(body)
+            .optJSONObject("data")
+            ?.optJSONArray("members") ?: return emptyList()
+        val list = mutableListOf<UUMember>()
+        for (i in 0 until arr.length()) {
+            val o = arr.getJSONObject(i)
+            list.add(
+                UUMember(
+                    id            = o.optInt("id", 0),
+                    name          = o.safeString("name", fallback = "-"),
+                    bank          = o.safeString("bank", fallback = "-"),
+                    accountNumber = o.safeString("account_number", fallback = "-"),
+                    isActive      = o.optBoolean("is_active", false),
+                )
+            )
+        }
+        return list
+    }
+
+    private fun updateUUAccountLabel() {
+        val active = uuMembers.firstOrNull { it.isActive }
+        val label = if (active == null) "未選擇" else "${active.name} - ${active.bank}"
+        tvUUAccountName.text = "UUPay賬號 - $label"
+    }
+
+    private fun showUUMemberPicker() {
+        if (uuMembers.isEmpty()) {
+            Toast.makeText(this, "暫無可選賬號", Toast.LENGTH_SHORT).show()
+            loadUUMembers()
+            return
+        }
+
+        val container = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(4), dp(4), dp(4), dp(4))
+        }
+        val dialog = alertDialogBuilder()
+            .setTitle("UUPay賬號")
+            .setView(container)
+            .setNegativeButton("取消") { d, _ -> d.dismiss() }
+            .create()
+
+        uuMembers.forEach { member ->
+            val row = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity     = android.view.Gravity.CENTER_VERTICAL
+                setPadding(dp(12), dp(12), dp(12), dp(12))
+            }
+            val info = LinearLayout(this).apply {
+                orientation  = LinearLayout.VERTICAL
+                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+            }
+            info.addView(TextView(this).apply {
+                text     = "${member.name} - ${member.bank}"
+                textSize = 14f
+                setTextColor(Color.parseColor("#1C1C1E"))
+                typeface = android.graphics.Typeface.DEFAULT_BOLD
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                )
+            })
+            info.addView(TextView(this).apply {
+                text     = "賬號: ${member.accountNumber}"
+                textSize = 11f
+                setTextColor(Color.parseColor("#888888"))
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                ).also { it.topMargin = dp(2) }
+            })
+            row.addView(info)
+
+            if (member.isActive) {
+                row.addView(TextView(this).apply {
+                    text     = "使用中"
+                    textSize = 10f
+                    setTextColor(Color.WHITE)
+                    setBackgroundColor(Color.parseColor("#2DD4BF"))
+                    setPadding(dp(8), dp(3), dp(8), dp(3))
+                })
+            } else {
+                row.setOnClickListener {
+                    dialog.dismiss()
+                    confirmActivateUUMember(member)
+                }
+            }
+            container.addView(row)
+            container.addView(View(this).apply {
+                setBackgroundColor(Color.parseColor("#E5E5EA"))
+                layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(1))
+            })
+        }
+
+        dialog.show()
+    }
+
+    private fun confirmActivateUUMember(member: UUMember) {
+        alertDialogBuilder()
+            .setTitle("切換 UUPay 賬號")
+            .setMessage("確定要切換到「${member.name}」嗎？")
+            .setNegativeButton("取消") { d, _ -> d.dismiss() }
+            .setPositiveButton("確認") { _, _ ->
+                activateUUMemberApi(member.id) { success ->
+                    if (success) {
+                        loadUUMembers()
+                    } else {
+                        Toast.makeText(this, "切換失敗，請重試", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+            .show()
+    }
+
+    private fun activateUUMemberApi(memberId: Int, onResult: (Boolean) -> Unit) {
+        val token = prefs.getString("flutter.bubble_token", "") ?: ""
+        if (token.isEmpty()) { handler.post { onResult(false) }; return }
+        Thread {
+            val success = runCatching {
+                val conn = URL("$apiBaseUrl/admin-withdraw/uu-members/activate")
+                    .openConnection() as HttpURLConnection
+                conn.apply {
+                    requestMethod = "POST"
+                    setRequestProperty("Authorization", "Bearer $token")
+                    setRequestProperty("Content-Type", "application/json")
+                    doOutput = true
+                    connectTimeout = 10_000
+                    readTimeout    = 10_000
+                }
+                OutputStreamWriter(conn.outputStream).use { it.write("""{"member_id":$memberId}""") }
+                val code = conn.responseCode
+                conn.disconnect()
+                if (code == 401) { on401(); return@runCatching false }
+                code in 200..299
+            }.getOrDefault(false)
+            handler.post { onResult(success) }
+        }.start()
+    }
+
     // ── JSON helpers ──────────────────────────────────────────────────────────
 
     private fun JSONObject.safeString(vararg keys: String, fallback: String = "—"): String {
@@ -1576,4 +1763,10 @@ class BubbleActivity : Activity() {
 
     private fun dp(value: Int): Int =
         (value * resources.displayMetrics.density).toInt()
+
+    /** Forces a light (white background / dark text) dialog theme, regardless of
+     *  the device's system dark mode — this screen's content is styled for a
+     *  light background only, so a dark-mode dialog theme renders unreadable. */
+    private fun alertDialogBuilder(): AlertDialog.Builder =
+        AlertDialog.Builder(this, android.R.style.Theme_Material_Light_Dialog_Alert)
 }

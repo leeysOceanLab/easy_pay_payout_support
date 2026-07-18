@@ -20,6 +20,25 @@ class MainController with ChangeNotifier {
   int page = 1;
   final ScrollController scrollController = ScrollController();
 
+  List<UUMemberModel> uuMembers = [];
+
+  String get activeUUMemberName {
+    final List<UUMemberModel> active = uuMembers
+        .where((e) => e.isActive == true)
+        .toList();
+    if (active.isEmpty) return '未选择';
+
+    final UUMemberModel member = active.first;
+    final String name = member.name ?? '未选择';
+    final String bank = member.bank ?? '';
+    return bank.isEmpty ? name : '$name - ${_truncateBankName(bank)}';
+  }
+
+  String _truncateBankName(String bank, {int maxLength = 6}) {
+    if (bank.length <= maxLength) return bank;
+    return '${bank.substring(0, maxLength)}…';
+  }
+
   @override
   void dispose() {
     refreshController.dispose();
@@ -40,7 +59,10 @@ class MainController with ChangeNotifier {
   }
 
   void onRefresh() async {
-    if (_isFetchingList) { refreshController.refreshCompleted(); return; }
+    if (_isFetchingList) {
+      refreshController.refreshCompleted();
+      return;
+    }
     _isFetchingList = true;
     isLoading = true;
     page = 1;
@@ -52,15 +74,58 @@ class MainController with ChangeNotifier {
     refreshController.refreshCompleted();
     isLoading = false;
     _isFetchingList = false;
+    await getUUMembers();
     update();
   }
 
   void onLoading() async {
-    if (_isFetchingList) { refreshController.loadComplete(); return; }
+    if (_isFetchingList) {
+      refreshController.loadComplete();
+      return;
+    }
     _isFetchingList = true;
     await getWithdrawalList();
     _isFetchingList = false;
     update();
+  }
+
+  bool isLoadingUUMembers = false;
+
+  Future<void> getUUMembers() async {
+    isLoadingUUMembers = true;
+    update();
+
+    await ApiService.api.getUUMembers(
+      onSuccess: (response) {
+        final raw = response.data['members'];
+        if (raw is List) {
+          uuMembers = raw
+              .map((e) => UUMemberModel.fromJson(Map<String, dynamic>.from(e)))
+              .toList();
+        }
+      },
+      onError: (error) {},
+    );
+
+    isLoadingUUMembers = false;
+    update();
+  }
+
+  Future<void> activateUUMember(int memberId) async {
+    bool success = false;
+
+    await ApiService.api.activateUUMember(
+      memberId: memberId,
+      showLoader: true,
+      onSuccess: (response) {
+        success = true;
+        response.showMessage();
+      },
+    );
+
+    if (success) {
+      await getUUMembers();
+    }
   }
 
   Future<void> getMyLockedWithdrawal() async {
@@ -181,16 +246,28 @@ class MainController with ChangeNotifier {
         if (page == 1) {
           final rawPriority = response.data['priority'];
           if (rawPriority is List) {
-            priorityList = rawPriority
-                .map((e) => WithdrawalOrderModel.fromJson(Map<String, dynamic>.from(e)))
-                .toList()
-              ..sort((a, b) => (a.priorityValue ?? 0).compareTo(b.priorityValue ?? 0));
+            priorityList =
+                rawPriority
+                    .map(
+                      (e) => WithdrawalOrderModel.fromJson(
+                        Map<String, dynamic>.from(e),
+                      ),
+                    )
+                    .toList()
+                  ..sort(
+                    (a, b) =>
+                        (a.priorityValue ?? 0).compareTo(b.priorityValue ?? 0),
+                  );
           }
 
           final rawManual = response.data['manual_withdrawals'];
           if (rawManual is List) {
             manualWithdrawalList = rawManual
-                .map((e) => WithdrawalOrderModel.fromJson(Map<String, dynamic>.from(e)))
+                .map(
+                  (e) => WithdrawalOrderModel.fromJson(
+                    Map<String, dynamic>.from(e),
+                  ),
+                )
                 .toList();
           }
         }
@@ -203,7 +280,11 @@ class MainController with ChangeNotifier {
         if (rawWithdrawals is List) {
           withdrawalList.addAll(
             rawWithdrawals
-                .map((e) => WithdrawalOrderModel.fromJson(Map<String, dynamic>.from(e)))
+                .map(
+                  (e) => WithdrawalOrderModel.fromJson(
+                    Map<String, dynamic>.from(e),
+                  ),
+                )
                 .where((e) => !excludedIds.contains(e.id))
                 .toList(),
           );

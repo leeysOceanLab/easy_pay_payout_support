@@ -3,8 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
+import '../../api/api_service.dart';
 import '../../configs/app_strings.dart';
 import '../../controller/withdrawal_details_controller.dart';
+import '../../models/uu_member_model.dart';
 
 /// Embedded Flutter screen shown inside the Android Bubble.
 /// Reuses [WithdrawalDetailsController] for copy-logs, API actions,
@@ -34,9 +36,30 @@ class _BubbleDetailsScreenState extends State<BubbleDetailsScreen> {
   static const Color _green = Color(0xFF30D158);
   static const Color _disabled = Color(0xFF3A3A3C);
 
+  List<UUMemberModel> _uuMembers = [];
+  bool _isLoadingUUMembers = false;
+
+  String get _activeUUMemberName {
+    final List<UUMemberModel> active = _uuMembers
+        .where((e) => e.isActive == true)
+        .toList();
+    if (active.isEmpty) return '未选择';
+
+    final UUMemberModel member = active.first;
+    final String name = member.name ?? '未选择';
+    final String bank = member.bank ?? '';
+    return bank.isEmpty ? name : '$name - ${_truncateBankName(bank)}';
+  }
+
+  String _truncateBankName(String bank, {int maxLength = 6}) {
+    if (bank.length <= maxLength) return bank;
+    return '${bank.substring(0, maxLength)}…';
+  }
+
   @override
   void initState() {
     super.initState();
+    _loadUUMembers();
     // Defer to post-frame so NavigationService.navigatorKey.currentContext
     // is set before WithdrawalDetailsController accesses it.
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -46,6 +69,250 @@ class _BubbleDetailsScreenState extends State<BubbleDetailsScreen> {
         setState(() => _controller = ctrl);
       }
     });
+  }
+
+  Future<void> _loadUUMembers() async {
+    if (!mounted) return;
+    setState(() => _isLoadingUUMembers = true);
+
+    await ApiService.api.getUUMembers(
+      onSuccess: (response) {
+        final raw = response.data['members'];
+        if (raw is List) {
+          _uuMembers = raw
+              .map((e) => UUMemberModel.fromJson(Map<String, dynamic>.from(e)))
+              .toList();
+        }
+      },
+      onError: (error) {},
+    );
+
+    if (!mounted) return;
+    setState(() => _isLoadingUUMembers = false);
+  }
+
+  Future<void> _confirmActivateUUMember(
+    BuildContext context,
+    UUMemberModel member,
+  ) async {
+    final bool? confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => _ConfirmDialog(
+        iconColor: _teal,
+        icon: Icons.swap_horiz_rounded,
+        title: '切换 UUPay 账号',
+        message: '确定要切换到「${member.name ?? '-'}」吗？',
+        confirmLabel: context.tr(AppStrings.confirm),
+        confirmColor: _teal,
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    bool success = false;
+    await ApiService.api.activateUUMember(
+      memberId: member.id ?? 0,
+      onSuccess: (response) {
+        success = true;
+      },
+    );
+    if (!success) return;
+
+    await _loadUUMembers();
+  }
+
+  void _showUUMemberPicker(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: _surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'UUPay账号',
+                  style: TextStyle(
+                    color: _white,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                if (_uuMembers.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 20),
+                    child: Center(
+                      child: Text(
+                        '暂无可选账号',
+                        style: const TextStyle(color: _greyText),
+                      ),
+                    ),
+                  )
+                else
+                  Flexible(
+                    child: ListView.separated(
+                      shrinkWrap: true,
+                      itemCount: _uuMembers.length,
+                      separatorBuilder: (context, index) =>
+                          const SizedBox(height: 8),
+                      itemBuilder: (context, index) {
+                        final UUMemberModel member = _uuMembers[index];
+                        final bool isActive = member.isActive == true;
+
+                        return InkWell(
+                          borderRadius: BorderRadius.circular(10),
+                          onTap: isActive
+                              ? null
+                              : () {
+                                  Navigator.of(ctx).pop();
+                                  _confirmActivateUUMember(context, member);
+                                },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 10,
+                            ),
+                            decoration: BoxDecoration(
+                              color: isActive ? _teal.withOpacity(0.15) : _bg,
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(
+                                color: isActive ? _teal : Colors.white12,
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        '${member.name ?? '-'} - ${member.bank ?? '-'}',
+                                        style: const TextStyle(
+                                          color: _white,
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        '账号: ${member.accountNumber ?? '-'}',
+                                        style: const TextStyle(
+                                          color: _greyText,
+                                          fontSize: 11,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                if (isActive)
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 3,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: _teal,
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    child: const Text(
+                                      '使用中',
+                                      style: TextStyle(
+                                        color: Color(0xFF1C1C1E),
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                  )
+                                else
+                                  const Icon(
+                                    Icons.chevron_right_rounded,
+                                    color: _grey,
+                                    size: 18,
+                                  ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildUUMemberBar(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(14, 10, 14, 0),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: _surface,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: InkWell(
+              onTap: () => _showUUMemberPicker(context),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.account_balance_wallet_rounded,
+                    size: 14,
+                    color: _teal,
+                  ),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      'UUPay账号 - $_activeUUMemberName',
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: _white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  const Icon(
+                    Icons.keyboard_arrow_down_rounded,
+                    size: 16,
+                    color: _grey,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          InkWell(
+            onTap: _isLoadingUUMembers ? null : _loadUUMembers,
+            child: SizedBox(
+              width: 16,
+              height: 16,
+              child: _isLoadingUUMembers
+                  ? const Padding(
+                      padding: EdgeInsets.all(2),
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: _teal,
+                      ),
+                    )
+                  : const Icon(Icons.refresh_rounded, size: 16, color: _teal),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -323,6 +590,7 @@ class _BubbleDetailsScreenState extends State<BubbleDetailsScreen> {
                   ? const Center(child: CircularProgressIndicator(color: _teal))
                   : Column(
                       children: [
+                        _buildUUMemberBar(ctx),
                         // ── Scrollable content ───────────────────────────
                         Expanded(
                           child: SingleChildScrollView(
@@ -414,10 +682,7 @@ class _BubbleDetailsScreenState extends State<BubbleDetailsScreen> {
                                 // Bank name (bank transfer only)
                                 if (!isKuaizhuan) ...[
                                   const SizedBox(height: 8),
-                                  _InfoTile(
-                                    label: '银行',
-                                    value: bankName,
-                                  ),
+                                  _InfoTile(label: '银行', value: bankName),
                                 ],
 
                                 // Expired / countdown indicator

@@ -37,32 +37,35 @@ class NormalDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          margin: const EdgeInsets.all(kDialogPadding).r,
-          decoration: BoxDecoration(
-            color: AppColors.containerBgColor,
-            borderRadius: BorderRadius.circular(10.w),
-          ),
-          clipBehavior: Clip.hardEdge,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              // upper part
-              upperPart(),
+    return Material(
+      type: MaterialType.transparency,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            margin: const EdgeInsets.all(kDialogPadding).r,
+            decoration: BoxDecoration(
+              color: AppColors.containerBgColor,
+              borderRadius: BorderRadius.circular(10.w),
+            ),
+            clipBehavior: Clip.hardEdge,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                // upper part
+                upperPart(),
 
-              // divider
-              Container(height: 1, color: AppColors.greyLightColor),
+                // divider
+                Container(height: 1, color: AppColors.greyLightColor),
 
-              // bottomPart
-              bottomPart(),
-            ],
+                // bottomPart
+                bottomPart(),
+              ],
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 

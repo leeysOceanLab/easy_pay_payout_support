@@ -23,6 +23,20 @@ class BottomSheetHelper {
     );
   }
 
+  static void uuMembers(
+    List<UUMemberModel> members, {
+    Function(UUMemberModel)? onSelect,
+  }) {
+    showBarModalBottomSheet(
+      context: context,
+      barrierColor: Colors.black54,
+      shape: roundShapeBorder,
+      builder: (context) =>
+          BottomSheetUUMembers(members: members, onSelect: onSelect),
+      topControl: const SizedBox.shrink(),
+    );
+  }
+
   static Future<dynamic> noInternetConnection() async {
     return await showBarModalBottomSheet(
       context: context,

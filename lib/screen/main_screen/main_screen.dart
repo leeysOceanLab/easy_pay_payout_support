@@ -236,7 +236,9 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
       create: (_) {
-        controller = MainController()..onRefresh();
+        controller = MainController()
+          ..onRefresh()
+          ..getUUMembers();
         return controller!;
       },
       child: Consumer<MainController>(
@@ -316,6 +318,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisAlignment: MainAxisAlignment.start,
               children: [
+                _buildUUMemberSelector(mainController),
                 Expanded(
                   child: SmartRefresherWrapper(
                     controller: mainController.refreshController,
@@ -326,7 +329,8 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
                     isLoading: mainController.isLoading,
                     onRefresh: mainController.onRefresh,
                     onLoading: mainController.onLoading,
-                    child: mainController.withdrawalList.isEmpty &&
+                    child:
+                        mainController.withdrawalList.isEmpty &&
                             mainController.priorityList.isEmpty &&
                             mainController.manualWithdrawalList.isEmpty
                         ? _buildEmptyView()
@@ -375,7 +379,9 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
                                 ),
                                 20.heightSpace,
                               ],
-                              if (mainController.manualWithdrawalList.isNotEmpty) ...[
+                              if (mainController
+                                  .manualWithdrawalList
+                                  .isNotEmpty) ...[
                                 Row(
                                   children: [
                                     Icon(
@@ -396,9 +402,12 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
                                 ...List.generate(
                                   mainController.manualWithdrawalList.length,
                                   (index) {
-                                    final item = mainController.manualWithdrawalList[index];
+                                    final item = mainController
+                                        .manualWithdrawalList[index];
                                     return Padding(
-                                      padding: const EdgeInsets.only(bottom: 12).r,
+                                      padding: const EdgeInsets.only(
+                                        bottom: 12,
+                                      ).r,
                                       child: _buildManualTransactionItem(
                                         item,
                                         mainController,
@@ -458,6 +467,98 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     );
   }
 
+  void _confirmActivateUUMember(
+    MainController mainController,
+    UUMemberModel member,
+  ) {
+    DialogHelper().showNormalDialog(
+      title: '切换 UUPay 账号',
+      description: '确定要切换到「${member.name ?? '-'}」吗？',
+      leftButtonText: context.tr(AppStrings.cancel),
+      leftFunction: () => AppNavigator.pop(context),
+      rightButtonText: context.tr(AppStrings.confirm),
+      rightFunction: () {
+        AppNavigator.pop(context);
+        mainController.activateUUMember(member.id ?? 0);
+      },
+    );
+  }
+
+  Widget _buildUUMemberSelector(MainController mainController) {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 12).r,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10).r,
+      decoration: BoxDecoration(
+        color: AppColors.whiteColor,
+        borderRadius: BorderRadius.circular(14).r,
+        border: Border.all(color: AppColors.greyLightColor),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: InkWellWrapper(
+              onTap: () => BottomSheetHelper.uuMembers(
+                mainController.uuMembers,
+                onSelect: (member) =>
+                    _confirmActivateUUMember(mainController, member),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.account_balance_wallet_rounded,
+                    size: 16.sp,
+                    color: AppColors.primaryNoContextColor,
+                  ),
+                  8.widthSpace,
+                  Expanded(
+                    child: AppText(
+                      'UUPay账号 - ${mainController.activeUUMemberName}',
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.primaryTextColor,
+                      // isOverflow: true,
+                    ),
+                  ),
+                  Icon(
+                    Icons.keyboard_arrow_down_rounded,
+                    size: 20.sp,
+                    color: AppColors.secondaryTextColor,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          8.widthSpace,
+          Container(width: 1, height: 18.h, color: AppColors.greyLightColor),
+          8.widthSpace,
+          InkWellWrapper(
+            onTap: mainController.isLoadingUUMembers
+                ? null
+                : () => mainController.getUUMembers(),
+            child: SizedBox(
+              width: 18.sp,
+              height: 18.sp,
+              child: mainController.isLoadingUUMembers
+                  ? SizedBox(
+                      width: 14.sp,
+                      height: 14.sp,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: AppColors.primaryNoContextColor,
+                      ),
+                    )
+                  : Icon(
+                      Icons.refresh_rounded,
+                      size: 18.sp,
+                      color: AppColors.primaryNoContextColor,
+                    ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildEmptyView() {
     return Center(
       child: Padding(
@@ -512,10 +613,10 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     return InkWellWrapper(
       onTap: canClick
           ? () => mainController.goToWithdrawalDetails(
-                item.id!,
-                detailsItem: null,
-                lockedByMe: lockedByMe,
-              )
+              item.id!,
+              detailsItem: null,
+              lockedByMe: lockedByMe,
+            )
           : null,
       child: Container(
         width: double.infinity,
@@ -535,7 +636,10 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8).r,
+              padding: const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 8,
+              ).r,
               decoration: BoxDecoration(
                 color: AppColors.redColor,
                 borderRadius: BorderRadius.only(
@@ -545,7 +649,11 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
               ),
               child: Row(
                 children: [
-                  Icon(Icons.push_pin_rounded, color: AppColors.whiteColor, size: 13.sp),
+                  Icon(
+                    Icons.push_pin_rounded,
+                    color: AppColors.whiteColor,
+                    size: 13.sp,
+                  ),
                   5.widthSpace,
                   Expanded(
                     child: AppText(
@@ -556,7 +664,10 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
                     ),
                   ),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2).r,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 2,
+                    ).r,
                     decoration: BoxDecoration(
                       color: AppColors.whiteColor.withValues(alpha: 0.25),
                       borderRadius: BorderRadius.circular(12).r,
@@ -641,10 +752,10 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     return InkWellWrapper(
       onTap: canClick
           ? () => mainController.goToWithdrawalDetails(
-                item.id!,
-                detailsItem: null,
-                lockedByMe: lockedByMe,
-              )
+              item.id!,
+              detailsItem: null,
+              lockedByMe: lockedByMe,
+            )
           : null,
       child: Container(
         width: double.infinity,
@@ -664,7 +775,10 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8).r,
+              padding: const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 8,
+              ).r,
               decoration: BoxDecoration(
                 color: manualColor,
                 borderRadius: BorderRadius.only(
@@ -674,7 +788,11 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
               ),
               child: Row(
                 children: [
-                  Icon(Icons.assignment_rounded, color: AppColors.whiteColor, size: 13.sp),
+                  Icon(
+                    Icons.assignment_rounded,
+                    color: AppColors.whiteColor,
+                    size: 13.sp,
+                  ),
                   5.widthSpace,
                   AppText(
                     '手動內部申請單',
@@ -744,7 +862,8 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
 
   String _typeText(WithdrawalOrderModel item) {
     final t = item.type ?? '-';
-    if (t.toLowerCase() == 'kuaizhuan') return context.tr(AppStrings.fastTransfer);
+    if (t.toLowerCase() == 'kuaizhuan')
+      return context.tr(AppStrings.fastTransfer);
     if (t.toLowerCase() == 'bank' || t.toLowerCase() == 'bank_transfer') {
       return context.tr(AppStrings.bankTransfer);
     }
